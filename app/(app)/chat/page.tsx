@@ -199,7 +199,8 @@ export default function ChatPage() {
     recognition.interimResults = false
     recognition.lang = "en-US"
 
-    recognition.onresult = (e: SpeechRecognitionEvent) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    recognition.onresult = (e: any) => {
       const transcript = e.results[0][0].transcript
       sendMessage(transcript)
     }
