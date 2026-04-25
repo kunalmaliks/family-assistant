@@ -1,7 +1,10 @@
 import { createSupabaseAdminClient } from "./supabase"
-import type { Session } from "next-auth"
 
-export async function getOrCreateUser(session: Session) {
+interface SessionLike {
+  user?: { email?: string | null; name?: string | null } | null
+}
+
+export async function getOrCreateUser(session: SessionLike) {
   const supabase = createSupabaseAdminClient()
   const email = session.user?.email
   if (!email) return null
