@@ -230,28 +230,7 @@ export default function SettingsPage() {
           <div className="bg-zinc-900 rounded-xl p-4 space-y-4">
             <div>
               <p className="text-sm text-zinc-300 mb-1">Sync frequency</p>
-              <p className="text-xs text-zinc-500 mb-3">How often new emails are fetched from Gmail. Applies to all rules.</p>
-              <div className="flex gap-2">
-                {[
-                  { value: "30min", label: "30 min" },
-                  { value: "1hour", label: "1 hour" },
-                  { value: "2hour", label: "2 hours" },
-                ].map((opt) => (
-                  <button
-                    key={opt.value}
-                    onClick={() => saveSettings({ sync_frequency: opt.value })}
-                    disabled={savingSync}
-                    className={cn(
-                      "flex-1 py-2 text-xs rounded-xl border font-medium transition-all",
-                      syncFrequency === opt.value
-                        ? "bg-amber-500 text-black border-amber-500"
-                        : "bg-zinc-800 text-zinc-400 border-zinc-700 hover:border-zinc-500"
-                    )}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
+              <p className="text-xs text-zinc-500">Automatic sync runs daily at 7am. Use the sync buttons above to sync manually anytime.</p>
             </div>
             <div>
               <p className="text-sm text-zinc-300 mb-1">Lookback period</p>
