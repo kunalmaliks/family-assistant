@@ -5,7 +5,8 @@ import { getOrCreateUser } from "@/lib/get-or-create-user"
 import { google } from "googleapis"
 import { decryptToken } from "@/lib/token-crypto"
 
-async function getGAuth(session: Awaited<ReturnType<typeof auth>>) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function getGAuth(session: any) {
   const supabase = createSupabaseAdminClient()
   const user = await getOrCreateUser(session)
   if (!user) return null
