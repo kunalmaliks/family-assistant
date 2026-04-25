@@ -5,9 +5,9 @@ import { getOrCreateUser } from "@/lib/get-or-create-user"
 import { google } from "googleapis"
 import { decryptToken } from "@/lib/token-crypto"
 
-async function getGAuth(session: Awaited<ReturnType<typeof auth>>) {
+async function getGAuth(session: NonNullable<Awaited<ReturnType<typeof auth>>>) {
   const supabase = createSupabaseAdminClient()
-  const user = await getOrCreateUser(session!)
+  const user = await getOrCreateUser(session)
   if (!user) return null
 
   const { data: userRow } = await supabase
@@ -34,7 +34,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ ev
   const { eventId } = await params
   const body = await req.json()
 
-  const gAuth = await getGAuth(session)
+  const gAuth = await getGAuth(session as NonNullable<Awaited<ReturnType<typeof auth>>>)
   if (!gAuth) return NextResponse.json({ error: "User not found" }, { status: 404 })
 
   try {
@@ -95,7 +95,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
 
   const { eventId } = await params
 
-  const gAuth = await getGAuth(session)
+  const gAuth = await getGAuth(session as NonNullable<Awaited<ReturnType<typeof auth>>>)
   if (!gAuth) return NextResponse.json({ error: "User not found" }, { status: 404 })
 
   try {
