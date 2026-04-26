@@ -5,7 +5,8 @@ import { createSupabaseAdminClient } from "./supabase"
 export async function generateDailyBrief(
   userId: string,
   accessToken: string,
-  refreshToken: string | null
+  refreshToken: string | null,
+  timezone?: string
 ): Promise<void> {
   const supabase = createSupabaseAdminClient()
 
@@ -24,7 +25,7 @@ export async function generateDailyBrief(
   if (existing && existing.length > 0) return
 
   // Fetch today's calendar events (next 1 day)
-  const events = await fetchCalendarEvents(accessToken, refreshToken, 1)
+  const events = await fetchCalendarEvents(accessToken, refreshToken, 1, timezone)
   const today = new Date().toISOString().split("T")[0]
   const todayEvents = events.filter((e) => e.date === today)
 

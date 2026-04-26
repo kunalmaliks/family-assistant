@@ -15,7 +15,8 @@ export interface CalendarEvent {
 export async function fetchCalendarEvents(
   accessToken: string,
   refreshToken: string | null,
-  monthsAhead = 2
+  monthsAhead = 2,
+  timezone?: string
 ): Promise<CalendarEvent[]> {
   const now = new Date()
   const timeMin = new Date(now.getFullYear(), now.getMonth(), 1)
@@ -41,6 +42,7 @@ export async function fetchCalendarEvents(
       singleEvents: true,
       orderBy: "startTime",
       maxResults: 500,
+      timeZone: timezone || "America/Los_Angeles",
     })
 
     for (const event of res.data.items || []) {

@@ -51,7 +51,7 @@ export async function GET(req: Request) {
       )
 
       // Generate daily brief after sync (errors are non-fatal)
-      await generateDailyBrief(user.id, decryptToken(user.google_access_token), decryptToken(user.google_refresh_token))
+      await generateDailyBrief(user.id, decryptToken(user.google_access_token), decryptToken(user.google_refresh_token), settings?.timezone ?? undefined)
         .catch((e) => console.error("[cron] daily brief error:", e))
 
       results.push({ email: user.email, status: "ok" })

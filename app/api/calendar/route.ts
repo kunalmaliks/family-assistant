@@ -24,10 +24,16 @@ export async function GET(req: NextRequest) {
     .eq("id", user.id)
     .single()
 
+  const { data: settings } = await supabase
+    .from("settings")
+    .select("timezone")
+    .eq("user_id", user.id)
+    .single()
+
   const accessToken = (session.accessToken as string) || decryptToken(userRow?.google_access_token) || ""
   const refreshToken = decryptToken(userRow?.google_refresh_token) || null
 
-  const events = await fetchCalendarEvents(accessToken, refreshToken, monthsAhead)
+  const events = await fetchCalendarEvents(accessToken, refreshToken, monthsAhead, settings?.timezone ?? undefined)
   return NextResponse.json({ events })
 }
 

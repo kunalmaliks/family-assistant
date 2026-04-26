@@ -151,8 +151,14 @@ export async function POST(req: NextRequest) {
     .eq("id", user.id)
     .single()
 
+  const { data: userSettings } = await supabase
+    .from("settings")
+    .select("timezone")
+    .eq("user_id", user.id)
+    .single()
+
   const accessToken = (session.accessToken as string) || decryptToken(userRow?.google_access_token) || ""
-  const calendarEvents = await fetchCalendarEvents(accessToken, decryptToken(userRow?.google_refresh_token) || null, 2)
+  const calendarEvents = await fetchCalendarEvents(accessToken, decryptToken(userRow?.google_refresh_token) || null, 2, userSettings?.timezone ?? undefined)
   const calendarContext = formatEventsForContext(calendarEvents)
 
   // Get last 10 chat messages
