@@ -35,7 +35,8 @@ export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session?.user?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  const { title, date, time, end_date, end_time, location, description, recurrence } = await req.json()
+  const { title, date, time, end_date, end_time, location, description, recurrence, timeZone } = await req.json()
+  const tz = timeZone || "UTC"
 
   const eventDate = new Date(time ? `${date}T${time}:00` : `${date}T23:59:59`)
   if (eventDate < new Date()) {
@@ -85,14 +86,14 @@ export async function POST(req: NextRequest) {
         description,
         location,
         start: time
-          ? { dateTime: `${date}T${time}:00`, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }
+          ? { dateTime: `${date}T${time}:00`, timeZone: tz }
           : { date },
         end: end_time
-          ? { dateTime: `${end_date || date}T${end_time}:00`, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }
+          ? { dateTime: `${end_date || date}T${end_time}:00`, timeZone: tz }
           : end_date
           ? { date: end_date }
           : time
-          ? { dateTime: `${date}T${time}:00`, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }
+          ? { dateTime: `${date}T${time}:00`, timeZone: tz }
           : { date },
         recurrence: recurrence ? [recurrence] : undefined,
         reminders: { useDefault: true },

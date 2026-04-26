@@ -170,7 +170,7 @@ export default function ChatPage() {
       const res = await fetch(`/api/calendar${force ? "?force=true" : ""}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(suggestion),
+        body: JSON.stringify({ ...suggestion, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }),
       })
       if (res.status === 409) {
         const data = await res.json()

@@ -105,6 +105,7 @@ export default function CalendarPage() {
           end_time: editForm.end_time || undefined,
           location: editForm.location || undefined,
           description: editForm.description || undefined,
+          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         }),
       })
       if (res.ok) {

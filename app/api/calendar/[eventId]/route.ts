@@ -40,7 +40,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ ev
 
   try {
     const calendar = google.calendar({ version: "v3", auth: gAuth })
-    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+    const timeZone = body.timeZone || "UTC"
 
     // Fetch existing event to fill in any fields not provided by the caller
     const existing = await calendar.events.get({ calendarId: "primary", eventId })
