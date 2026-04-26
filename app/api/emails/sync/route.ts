@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
   const ruleId: string | undefined = body.rule_id
 
   try {
-    const summary = await syncEmailsForUser(session.user.email, accessToken, refreshToken, lookbackDays, ruleId)
+    const summary = await syncEmailsForUser(session.user.email, accessToken, refreshToken, lookbackDays, ruleId, user.id)
     return NextResponse.json({ success: true, summary })
   } catch (e) {
     console.error("[sync] error:", e)

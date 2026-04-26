@@ -5,6 +5,7 @@ import { getOrCreateUser } from "@/lib/get-or-create-user"
 import { fetchCalendarEvents } from "@/lib/calendar"
 import { google } from "googleapis"
 import { decryptToken } from "@/lib/token-crypto"
+import { checkCalendarDuplicate } from "@/lib/duplicate-check"
 
 export async function GET(req: NextRequest) {
   const session = await auth()
@@ -50,14 +51,29 @@ export async function POST(req: NextRequest) {
     .eq("id", user.id)
     .single()
 
+  const accessToken = (session.accessToken as string) || decryptToken(userRow?.google_access_token) || ""
+  const refreshToken = decryptToken(userRow?.google_refresh_token) || null
+
+  // Duplicate check — skip for recurring events since they span multiple dates
+  if (!recurrence) {
+    const dupCheck = await checkCalendarDuplicate(title, date, accessToken, refreshToken)
+    if (dupCheck.isDuplicate) {
+      return NextResponse.json({
+        duplicate: true,
+        existingEventTitle: dupCheck.existingEventTitle,
+        existingEventId: dupCheck.existingEventId,
+      }, { status: 409 })
+    }
+  }
+
   try {
     const gAuth = new google.auth.OAuth2(
       process.env.GOOGLE_CLIENT_ID,
       process.env.GOOGLE_CLIENT_SECRET
     )
     gAuth.setCredentials({
-      access_token: (session.accessToken as string) || decryptToken(userRow?.google_access_token),
-      refresh_token: decryptToken(userRow?.google_refresh_token),
+      access_token: accessToken,
+      refresh_token: refreshToken,
     })
 
     const calendar = google.calendar({ version: "v3", auth: gAuth })

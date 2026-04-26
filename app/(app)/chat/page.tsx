@@ -24,6 +24,7 @@ interface CalendarSuggestion {
   description?: string
   recurrence?: string
   recurrence_label?: string
+  _duplicate?: string
 }
 
 interface CalendarEdit {
@@ -163,14 +164,27 @@ export default function ChatPage() {
     }
   }
 
-  async function addToCalendar(key: string, suggestion: CalendarSuggestion) {
+  async function addToCalendar(key: string, suggestion: CalendarSuggestion, force = false) {
     setAddingEventId(key)
     try {
-      const res = await fetch("/api/calendar", {
+      const res = await fetch(`/api/calendar${force ? "?force=true" : ""}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(suggestion),
       })
+      if (res.status === 409) {
+        const data = await res.json()
+        setMessages((prev) => prev.map((m) => {
+          if (!m.calendarSuggestions) return m
+          return {
+            ...m,
+            calendarSuggestions: m.calendarSuggestions.map((s, i) =>
+              `${m.id}-${i}` === key ? { ...s, _duplicate: data.existingEventTitle } : s
+            ),
+          }
+        }))
+        return
+      }
       if (res.ok) {
         setAddedEventIds((prev) => new Set(prev).add(key))
         const label = suggestion.recurrence_label ? ` (${suggestion.recurrence_label})` : ""
@@ -346,6 +360,11 @@ export default function ChatPage() {
                       )}
                     </div>
                   </div>
+                  {suggestion._duplicate && (
+                    <p className="text-xs text-orange-400 mt-2 leading-snug">
+                      Already on your calendar as <strong className="text-orange-300">{suggestion._duplicate}</strong>. Add anyway?
+                    </p>
+                  )}
                   <div className="flex gap-2 mt-3">
                     {addedEventIds.has(key) ? (
                       <div className="flex items-center gap-1.5 text-xs text-green-500">
@@ -354,12 +373,12 @@ export default function ChatPage() {
                     ) : (
                       <>
                         <button
-                          onClick={() => addToCalendar(key, suggestion)}
+                          onClick={() => addToCalendar(key, suggestion, !!suggestion._duplicate)}
                           disabled={addingEventId === key}
                           className="flex-1 flex items-center justify-center gap-1.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-black text-xs font-medium rounded-xl transition-colors disabled:opacity-50"
                         >
                           {addingEventId === key ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
-                          Yes, add it
+                          {suggestion._duplicate ? "Add anyway" : "Yes, add it"}
                         </button>
                         <button
                           onClick={() =>

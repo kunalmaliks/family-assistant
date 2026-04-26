@@ -2,6 +2,7 @@ import { google } from "googleapis"
 import { createSupabaseAdminClient } from "./supabase"
 import OpenAI from "openai"
 import type { Category } from "./supabase"
+import { processEmailForCalendar } from "./process-email-calendar"
 
 export interface SyncSummary {
   fetched: number
@@ -16,7 +17,8 @@ export async function syncEmailsForUser(
   accessToken: string,
   refreshToken: string,
   lookbackDays = 30,
-  ruleId?: string
+  ruleId?: string,
+  userId?: string
 ): Promise<SyncSummary> {
   const supabase = createSupabaseAdminClient()
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
@@ -164,6 +166,14 @@ export async function syncEmailsForUser(
         )
       }
       summary.inserted++
+
+      // Auto-detect calendar events from new email (fire-and-forget, errors are non-fatal)
+      if (userId) {
+        const combinedText = `${body}${attachmentText ? "\n" + attachmentText : ""}`
+        const receivedDate = new Date(dateStr).toISOString().split("T")[0]
+        processEmailForCalendar(subject, combinedText, receivedDate, userId, accessToken, refreshToken)
+          .catch((e) => console.error("[sync] calendar detection error:", e))
+      }
     } catch {
       summary.skipped++
     }
