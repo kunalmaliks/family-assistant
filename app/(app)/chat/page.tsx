@@ -43,7 +43,7 @@ interface Message {
   role: "user" | "assistant"
   content: string
   timestamp: Date
-  calendarSuggestion?: CalendarSuggestion
+  calendarSuggestions?: CalendarSuggestion[]
   calendarEdit?: CalendarEdit
 }
 
@@ -62,6 +62,8 @@ export default function ChatPage() {
   const [historyLoading, setHistoryLoading] = useState(true)
   const [addingEventId, setAddingEventId] = useState<string | null>(null)
   const [addedEventIds, setAddedEventIds] = useState<Set<string>>(new Set())
+  // For multiple suggestions per message, track by "msgId-index"
+
   const [isListening, setIsListening] = useState(false)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null)
@@ -117,7 +119,7 @@ export default function ChatPage() {
           role: "assistant",
           content: data.response || "Sorry, I couldn't get a response. Please try again.",
           timestamp: new Date(),
-          calendarSuggestion: data.calendarSuggestion ?? undefined,
+          calendarSuggestions: data.calendarSuggestions?.length ? data.calendarSuggestions : undefined,
           calendarEdit: data.calendarEdit ?? undefined,
         },
       ])
@@ -161,8 +163,8 @@ export default function ChatPage() {
     }
   }
 
-  async function addToCalendar(msgId: string, suggestion: CalendarSuggestion) {
-    setAddingEventId(msgId)
+  async function addToCalendar(key: string, suggestion: CalendarSuggestion) {
+    setAddingEventId(key)
     try {
       const res = await fetch("/api/calendar", {
         method: "POST",
@@ -170,7 +172,7 @@ export default function ChatPage() {
         body: JSON.stringify(suggestion),
       })
       if (res.ok) {
-        setAddedEventIds((prev) => new Set(prev).add(msgId))
+        setAddedEventIds((prev) => new Set(prev).add(key))
         const label = suggestion.recurrence_label ? ` (${suggestion.recurrence_label})` : ""
         await saveNote(`✓ Calendar event added: ${suggestion.title} on ${suggestion.date}${suggestion.time ? ` at ${suggestion.time}` : ""}${label}`)
       }
@@ -317,61 +319,67 @@ export default function ChatPage() {
               </div>
             )}
 
-            {/* Calendar suggestion card */}
-            {msg.calendarSuggestion && (
-              <div className="max-w-[80%] mt-1.5 bg-zinc-900 border border-amber-500/30 rounded-2xl rounded-tl-sm px-4 py-3">
-                <div className="flex items-start gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0 mt-0.5">
-                    <CalendarPlus size={15} className="text-amber-500" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs text-amber-500 font-medium mb-0.5">Add to Calendar?</p>
-                    <p className="text-sm text-white font-medium truncate">{msg.calendarSuggestion.title}</p>
-                    <p className="text-xs text-zinc-400 mt-0.5">
-                      {formatEventDate(msg.calendarSuggestion.date, msg.calendarSuggestion.time)}
-                      {(msg.calendarSuggestion.end_time || msg.calendarSuggestion.end_date) && (
-                        <> → {formatEventDate(msg.calendarSuggestion.end_date || msg.calendarSuggestion.date, msg.calendarSuggestion.end_time)}</>
-                      )}
-                      {msg.calendarSuggestion.location && ` · ${msg.calendarSuggestion.location}`}
-                    </p>
-                    {msg.calendarSuggestion.recurrence_label && (
-                      <p className="flex items-center gap-1 text-xs text-amber-500/80 mt-1">
-                        <RefreshCw size={10} />
-                        {msg.calendarSuggestion.recurrence_label}
+            {/* Calendar suggestion cards */}
+            {msg.calendarSuggestions?.map((suggestion, idx) => {
+              const key = `${msg.id}-${idx}`
+              return (
+                <div key={key} className="max-w-[80%] mt-1.5 bg-zinc-900 border border-amber-500/30 rounded-2xl rounded-tl-sm px-4 py-3">
+                  <div className="flex items-start gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0 mt-0.5">
+                      <CalendarPlus size={15} className="text-amber-500" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-amber-500 font-medium mb-0.5">Add to Calendar?</p>
+                      <p className="text-sm text-white font-medium truncate">{suggestion.title}</p>
+                      <p className="text-xs text-zinc-400 mt-0.5">
+                        {formatEventDate(suggestion.date, suggestion.time)}
+                        {(suggestion.end_time || suggestion.end_date) && (
+                          <> → {formatEventDate(suggestion.end_date || suggestion.date, suggestion.end_time)}</>
+                        )}
+                        {suggestion.location && ` · ${suggestion.location}`}
                       </p>
+                      {suggestion.recurrence_label && (
+                        <p className="flex items-center gap-1 text-xs text-amber-500/80 mt-1">
+                          <RefreshCw size={10} />
+                          {suggestion.recurrence_label}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex gap-2 mt-3">
+                    {addedEventIds.has(key) ? (
+                      <div className="flex items-center gap-1.5 text-xs text-green-500">
+                        <Check size={13} /> Added to Google Calendar
+                      </div>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => addToCalendar(key, suggestion)}
+                          disabled={addingEventId === key}
+                          className="flex-1 flex items-center justify-center gap-1.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-black text-xs font-medium rounded-xl transition-colors disabled:opacity-50"
+                        >
+                          {addingEventId === key ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
+                          Yes, add it
+                        </button>
+                        <button
+                          onClick={() =>
+                            setMessages((prev) =>
+                              prev.map((m) => m.id === msg.id ? {
+                                ...m,
+                                calendarSuggestions: m.calendarSuggestions?.filter((_, i) => i !== idx)
+                              } : m)
+                            )
+                          }
+                          className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 text-xs rounded-xl transition-colors"
+                        >
+                          <X size={12} />
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>
-                <div className="flex gap-2 mt-3">
-                  {addedEventIds.has(msg.id) ? (
-                    <div className="flex items-center gap-1.5 text-xs text-green-500">
-                      <Check size={13} /> Added to Google Calendar
-                    </div>
-                  ) : (
-                    <>
-                      <button
-                        onClick={() => addToCalendar(msg.id, msg.calendarSuggestion!)}
-                        disabled={addingEventId === msg.id}
-                        className="flex-1 flex items-center justify-center gap-1.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-black text-xs font-medium rounded-xl transition-colors disabled:opacity-50"
-                      >
-                        {addingEventId === msg.id ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
-                        Yes, add it
-                      </button>
-                      <button
-                        onClick={() =>
-                          setMessages((prev) =>
-                            prev.map((m) => (m.id === msg.id ? { ...m, calendarSuggestion: undefined } : m))
-                          )
-                        }
-                        className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 text-xs rounded-xl transition-colors"
-                      >
-                        <X size={12} />
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
-            )}
+              )
+            })}
           </div>
         ))}
 

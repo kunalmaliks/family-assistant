@@ -204,22 +204,22 @@ ${relevantEmails.length > 0 ? relevantEmails.join("\n\n---\n\n") : "No emails sy
 
   // Extract text and any calendar suggestion from response
   let assistantMessage = ""
-  let calendarSuggestion: Record<string, string | undefined> | null = null
+  const calendarSuggestions: Record<string, string | undefined>[] = []
   let calendarEdit: Record<string, string | undefined> | null = null
 
   for (const block of response.content) {
     if (block.type === "text") {
       assistantMessage += block.text
     } else if (block.type === "tool_use" && block.name === "suggest_calendar_event") {
-      calendarSuggestion = block.input as Record<string, string>
+      calendarSuggestions.push(block.input as Record<string, string>)
     } else if (block.type === "tool_use" && block.name === "edit_calendar_event") {
       calendarEdit = block.input as Record<string, string>
     }
   }
 
   if (!assistantMessage) {
-    if (calendarSuggestion) {
-      assistantMessage = `I found an event: **${calendarSuggestion.title}** on **${calendarSuggestion.date}**.`
+    if (calendarSuggestions.length > 0) {
+      assistantMessage = calendarSuggestions.map(s => `I found an event: **${s.title}** on **${s.date}**.`).join("\n")
     } else if (calendarEdit) {
       assistantMessage = `Ready to update: **${calendarEdit.summary}**`
     } else {
@@ -233,5 +233,5 @@ ${relevantEmails.length > 0 ? relevantEmails.join("\n\n---\n\n") : "No emails sy
     { user_id: user.id, message: assistantMessage, role: "assistant" },
   ])
 
-  return NextResponse.json({ response: assistantMessage, calendarSuggestion, calendarEdit })
+  return NextResponse.json({ response: assistantMessage, calendarSuggestions, calendarEdit })
 }
