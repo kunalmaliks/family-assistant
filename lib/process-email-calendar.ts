@@ -10,7 +10,8 @@ export async function processEmailForCalendar(
   userId: string,
   accessToken: string,
   refreshToken: string | null,
-  lastSyncedAt?: string | null
+  lastSyncedAt?: string | null,
+  timezone = "America/Los_Angeles"
 ): Promise<void> {
   // On first sync (no lastSyncedAt) skip to avoid flooding calendar with historical emails
   if (!lastSyncedAt) return
@@ -28,7 +29,7 @@ export async function processEmailForCalendar(
   )
   gAuth.setCredentials({ access_token: accessToken, refresh_token: refreshToken })
   const calendar = google.calendar({ version: "v3", auth: gAuth })
-  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
+  const tz = timezone
 
   for (const event of events) {
     try {

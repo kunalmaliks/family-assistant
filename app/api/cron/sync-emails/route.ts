@@ -27,7 +27,7 @@ export async function GET(req: Request) {
     try {
       const { data: settings } = await supabase
         .from("settings")
-        .select("sync_frequency, lookback_period, last_synced_at")
+        .select("sync_frequency, lookback_period, last_synced_at, timezone")
         .eq("user_id", user.id)
         .single()
 
@@ -43,7 +43,7 @@ export async function GET(req: Request) {
 
       const lookbackDays = settings?.lookback_period === "6months" ? 180 : settings?.lookback_period === "3months" ? 90 : 30
 
-      await syncEmailsForUser(user.email, decryptToken(user.google_access_token), decryptToken(user.google_refresh_token), lookbackDays, undefined, user.id, settings?.last_synced_at ?? null)
+      await syncEmailsForUser(user.email, decryptToken(user.google_access_token), decryptToken(user.google_refresh_token), lookbackDays, undefined, user.id, settings?.last_synced_at ?? null, settings?.timezone ?? undefined)
 
       await supabase.from("settings").upsert(
         { user_id: user.id, last_synced_at: new Date().toISOString() },

@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
 
   const { data: settings } = await supabase
     .from("settings")
-    .select("lookback_period, last_synced_at")
+    .select("lookback_period, last_synced_at, timezone")
     .eq("user_id", user.id)
     .single()
 
@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
   const ruleId: string | undefined = body.rule_id
 
   try {
-    const summary = await syncEmailsForUser(session.user.email, accessToken, refreshToken, lookbackDays, ruleId, user.id, lastSyncedAt)
+    const summary = await syncEmailsForUser(session.user.email, accessToken, refreshToken, lookbackDays, ruleId, user.id, lastSyncedAt, settings?.timezone ?? undefined)
     await supabase.from("settings").upsert(
       { user_id: user.id, last_synced_at: new Date().toISOString() },
       { onConflict: "user_id" }
