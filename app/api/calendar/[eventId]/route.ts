@@ -51,11 +51,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ ev
     // Extract current values from the existing event
     const currentDate = (ex.start?.dateTime || ex.start?.date || "").split("T")[0]
     const currentTime = ex.start?.dateTime
-      ? new Date(ex.start.dateTime).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })
+      ? ex.start.dateTime.split("T")[1]?.substring(0, 5)
       : undefined
     const currentEndDate = (ex.end?.dateTime || ex.end?.date || "").split("T")[0]
     const currentEndTime = ex.end?.dateTime
-      ? new Date(ex.end.dateTime).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })
+      ? ex.end.dateTime.split("T")[1]?.substring(0, 5)
       : undefined
 
     // Merge: use provided values or fall back to existing

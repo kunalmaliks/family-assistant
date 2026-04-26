@@ -48,21 +48,13 @@ export async function fetchCalendarEvents(
       const startRaw = event.start?.dateTime || event.start?.date || ""
       const date = startRaw.split("T")[0]
       const time = event.start?.dateTime
-        ? new Date(event.start.dateTime).toLocaleTimeString("en-US", {
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: false,
-          })
+        ? event.start.dateTime.split("T")[1]?.substring(0, 5)
         : undefined
 
       const endRaw = event.end?.dateTime || event.end?.date || ""
       const end_date = endRaw ? endRaw.split("T")[0] : undefined
       const end_time = event.end?.dateTime
-        ? new Date(event.end.dateTime).toLocaleTimeString("en-US", {
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: false,
-          })
+        ? event.end.dateTime.split("T")[1]?.substring(0, 5)
         : undefined
 
       events.push({
