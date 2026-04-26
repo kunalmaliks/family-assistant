@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { ChevronLeft, ChevronRight, Clock, MapPin, Pencil, Trash2, X, Check, Loader2 } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn, formatTime12 } from "@/lib/utils"
 import type { CalendarEvent } from "@/lib/calendar"
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
@@ -258,7 +258,7 @@ export default function CalendarPage() {
                           {event.time && (
                             <span className="flex items-center gap-1 text-xs text-zinc-500">
                               <Clock size={11} />
-                              {event.time}{event.end_time ? ` – ${event.end_time}` : ""}
+                              {formatTime12(event.time)}{event.end_time ? ` – ${formatTime12(event.end_time)}` : ""}
                             </span>
                           )}
                           {event.location && (

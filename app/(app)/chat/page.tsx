@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react"
 import { useSession } from "next-auth/react"
 import { Send, Loader2, CalendarPlus, Check, X, RefreshCw, Mic } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn, formatTime12 } from "@/lib/utils"
 import ReactMarkdown from "react-markdown"
 
 const QUICK_ACTIONS = [
@@ -239,7 +239,8 @@ export default function ChatPage() {
     const d = new Date(date + "T00:00:00")
     if (isNaN(d.getTime())) return date
     const dateStr = d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
-    return time ? `${dateStr} at ${time}` : dateStr
+    const t = formatTime12(time)
+    return t ? `${dateStr} at ${t}` : dateStr
   }
 
   const firstName = session?.user?.name?.split(" ")[0] || "there"
