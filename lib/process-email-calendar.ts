@@ -15,10 +15,11 @@ export async function processEmailForCalendar(
 ): Promise<void> {
   // On first sync (no lastSyncedAt) skip to avoid flooding calendar with historical emails
   if (!lastSyncedAt) return
-  // Only process emails that arrived after the previous sync
+  // Only process emails that arrived after the previous sync (compare full timestamps)
   if (new Date(emailDate) <= new Date(lastSyncedAt)) return
 
-  const events = await detectCalendarEvents(subject, body, emailDate)
+  const emailDateOnly = emailDate.split("T")[0]
+  const events = await detectCalendarEvents(subject, body, emailDateOnly)
   if (events.length === 0) return
 
   const supabase = createSupabaseAdminClient()

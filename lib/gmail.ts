@@ -172,8 +172,8 @@ export async function syncEmailsForUser(
       // Auto-detect calendar events from new email (fire-and-forget, errors are non-fatal)
       if (userId) {
         const combinedText = `${body}${attachmentText ? "\n" + attachmentText : ""}`
-        const receivedDate = new Date(dateStr).toISOString().split("T")[0]
-        processEmailForCalendar(subject, combinedText, receivedDate, userId, accessToken, refreshToken, lastSyncedAt, timezone)
+        const receivedIso = new Date(dateStr).toISOString()
+        processEmailForCalendar(subject, combinedText, receivedIso, userId, accessToken, refreshToken, lastSyncedAt, timezone)
           .catch((e) => console.error("[sync] calendar detection error:", e))
       }
     } catch {
