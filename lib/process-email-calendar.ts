@@ -13,10 +13,11 @@ export async function processEmailForCalendar(
   lastSyncedAt?: string | null,
   timezone = "America/Los_Angeles"
 ): Promise<void> {
-  // On first sync (no lastSyncedAt) skip to avoid flooding calendar with historical emails
-  if (!lastSyncedAt) return
-  // Only process emails that arrived after the previous sync (compare full timestamps)
-  if (new Date(emailDate) <= new Date(lastSyncedAt)) return
+  // Use lastSyncedAt as cutoff; if no prior sync, fall back to 48 hours ago
+  const cutoff = lastSyncedAt
+    ? new Date(lastSyncedAt)
+    : new Date(Date.now() - 48 * 60 * 60 * 1000)
+  if (new Date(emailDate) <= cutoff) return
 
   const emailDateOnly = emailDate.split("T")[0]
   const events = await detectCalendarEvents(subject, body, emailDateOnly)
