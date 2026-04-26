@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
 
   const { data: settings } = await supabase
     .from("settings")
-    .select("lookback_period")
+    .select("lookback_period, last_synced_at")
     .eq("user_id", user.id)
     .single()
 
@@ -46,11 +46,17 @@ export async function POST(req: NextRequest) {
     : settings?.lookback_period === "3months" ? 90
     : 30
 
+  const lastSyncedAt: string | null = settings?.last_synced_at ?? null
+
   const body = await req.json().catch(() => ({}))
   const ruleId: string | undefined = body.rule_id
 
   try {
-    const summary = await syncEmailsForUser(session.user.email, accessToken, refreshToken, lookbackDays, ruleId, user.id)
+    const summary = await syncEmailsForUser(session.user.email, accessToken, refreshToken, lookbackDays, ruleId, user.id, lastSyncedAt)
+    await supabase.from("settings").upsert(
+      { user_id: user.id, last_synced_at: new Date().toISOString() },
+      { onConflict: "user_id" }
+    )
     return NextResponse.json({ success: true, summary })
   } catch (e) {
     console.error("[sync] error:", e)

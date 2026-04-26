@@ -18,7 +18,8 @@ export async function syncEmailsForUser(
   refreshToken: string,
   lookbackDays = 30,
   ruleId?: string,
-  userId?: string
+  userId?: string,
+  lastSyncedAt?: string | null
 ): Promise<SyncSummary> {
   const supabase = createSupabaseAdminClient()
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
@@ -171,7 +172,7 @@ export async function syncEmailsForUser(
       if (userId) {
         const combinedText = `${body}${attachmentText ? "\n" + attachmentText : ""}`
         const receivedDate = new Date(dateStr).toISOString().split("T")[0]
-        processEmailForCalendar(subject, combinedText, receivedDate, userId, accessToken, refreshToken)
+        processEmailForCalendar(subject, combinedText, receivedDate, userId, accessToken, refreshToken, lastSyncedAt)
           .catch((e) => console.error("[sync] calendar detection error:", e))
       }
     } catch {

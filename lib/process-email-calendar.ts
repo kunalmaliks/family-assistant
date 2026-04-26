@@ -3,18 +3,19 @@ import { detectCalendarEvents } from "./detect-calendar-events"
 import { checkCalendarDuplicate } from "./duplicate-check"
 import { createSupabaseAdminClient } from "./supabase"
 
-const FOURTEEN_DAYS_MS = 14 * 24 * 60 * 60 * 1000
-
 export async function processEmailForCalendar(
   subject: string,
   body: string,
   emailDate: string,
   userId: string,
   accessToken: string,
-  refreshToken: string | null
+  refreshToken: string | null,
+  lastSyncedAt?: string | null
 ): Promise<void> {
-  // Skip historical emails — only process recent ones
-  if (Date.now() - new Date(emailDate).getTime() > FOURTEEN_DAYS_MS) return
+  // On first sync (no lastSyncedAt) skip to avoid flooding calendar with historical emails
+  if (!lastSyncedAt) return
+  // Only process emails that arrived after the previous sync
+  if (new Date(emailDate) <= new Date(lastSyncedAt)) return
 
   const events = await detectCalendarEvents(subject, body, emailDate)
   if (events.length === 0) return
