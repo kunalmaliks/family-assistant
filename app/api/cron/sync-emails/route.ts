@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { createSupabaseAdminClient } from "@/lib/supabase"
 import { syncEmailsForUser } from "@/lib/gmail"
 import { decryptToken } from "@/lib/token-crypto"
+import { generateDailyBrief } from "@/lib/generate-daily-brief"
 
 // Vercel Cron: runs every 30 minutes
 export const dynamic = "force-dynamic"
@@ -48,6 +49,10 @@ export async function GET(req: Request) {
         { user_id: user.id, last_synced_at: new Date().toISOString() },
         { onConflict: "user_id" }
       )
+
+      // Generate daily brief after sync (errors are non-fatal)
+      await generateDailyBrief(user.id, decryptToken(user.google_access_token), decryptToken(user.google_refresh_token))
+        .catch((e) => console.error("[cron] daily brief error:", e))
 
       results.push({ email: user.email, status: "ok" })
     } catch (e) {
