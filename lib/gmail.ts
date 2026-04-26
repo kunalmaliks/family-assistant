@@ -173,7 +173,7 @@ export async function syncEmailsForUser(
       if (userId) {
         const combinedText = `${body}${attachmentText ? "\n" + attachmentText : ""}`
         const receivedIso = new Date(dateStr).toISOString()
-        processEmailForCalendar(subject, combinedText, receivedIso, userId, accessToken, refreshToken, lastSyncedAt, timezone)
+        processEmailForCalendar(subject, combinedText, receivedIso, userId, accessToken, refreshToken, timezone)
           .catch((e) => console.error("[sync] calendar detection error:", e))
       }
     } catch {
