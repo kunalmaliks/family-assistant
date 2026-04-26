@@ -108,12 +108,28 @@ export async function POST(req: NextRequest) {
   const user = await getOrCreateUser(session)
   if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 })
 
+  // Build expanded RAG query using recent history for context on short follow-ups
+  const { data: recentHistory } = await supabase
+    .from("chat_history")
+    .select("role, message")
+    .eq("user_id", user.id)
+    .order("timestamp", { ascending: false })
+    .limit(4)
+
+  const recentContext = (recentHistory || [])
+    .reverse()
+    .map((h: { role: string; message: string }) => h.message)
+    .join(" ")
+  const ragQuery = message.length < 60 && recentContext
+    ? `${message} ${recentContext}`.slice(0, 1000)
+    : message
+
   // RAG: find relevant emails
   let relevantEmails: string[] = []
   try {
     const embeddingRes = await openai.embeddings.create({
       model: "text-embedding-3-small",
-      input: message,
+      input: ragQuery,
     })
     const embedding = embeddingRes.data[0].embedding
     const query = supabase.rpc("match_emails", { query_embedding: embedding, match_count: 15, match_threshold: 0.3 })
