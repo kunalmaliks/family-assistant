@@ -35,41 +35,53 @@ export async function fetchCalendarEvents(
     })
 
     const calendar = google.calendar({ version: "v3", auth: gAuth })
-    const res = await calendar.events.list({
-      calendarId: "primary",
+
+    const calendarIds = [
+      "primary",
+      "en.usa#holiday@group.v.calendar.google.com",
+    ]
+
+    const listParams = {
       timeMin: timeMin.toISOString(),
       timeMax: timeMax.toISOString(),
       singleEvents: true,
-      orderBy: "startTime",
+      orderBy: "startTime" as const,
       maxResults: 500,
       timeZone: timezone || "America/Los_Angeles",
-    })
+    }
 
-    for (const event of res.data.items || []) {
-      if (!event.id || event.status === "cancelled") continue
-      const startRaw = event.start?.dateTime || event.start?.date || ""
-      const date = startRaw.split("T")[0]
-      const time = event.start?.dateTime
-        ? event.start.dateTime.split("T")[1]?.substring(0, 5)
-        : undefined
+    const results = await Promise.allSettled(
+      calendarIds.map((calendarId) => calendar.events.list({ calendarId, ...listParams }))
+    )
 
-      const endRaw = event.end?.dateTime || event.end?.date || ""
-      const end_date = endRaw ? endRaw.split("T")[0] : undefined
-      const end_time = event.end?.dateTime
-        ? event.end.dateTime.split("T")[1]?.substring(0, 5)
-        : undefined
+    for (const result of results) {
+      if (result.status === "rejected") continue
+      for (const event of result.value.data.items || []) {
+        if (!event.id || event.status === "cancelled") continue
+        const startRaw = event.start?.dateTime || event.start?.date || ""
+        const date = startRaw.split("T")[0]
+        const time = event.start?.dateTime
+          ? event.start.dateTime.split("T")[1]?.substring(0, 5)
+          : undefined
 
-      events.push({
-        id: event.id,
-        title: event.summary || "Untitled",
-        date,
-        time,
-        end_date,
-        end_time,
-        location: event.location ?? undefined,
-        description: event.description ?? undefined,
-        source: "google",
-      })
+        const endRaw = event.end?.dateTime || event.end?.date || ""
+        const end_date = endRaw ? endRaw.split("T")[0] : undefined
+        const end_time = event.end?.dateTime
+          ? event.end.dateTime.split("T")[1]?.substring(0, 5)
+          : undefined
+
+        events.push({
+          id: event.id,
+          title: event.summary || "Untitled",
+          date,
+          time,
+          end_date,
+          end_time,
+          location: event.location ?? undefined,
+          description: event.description ?? undefined,
+          source: "google",
+        })
+      }
     }
   } catch (e) {
     console.error("[calendar] Google fetch failed:", e)
