@@ -89,10 +89,10 @@ export async function GET() {
     .from("chat_history")
     .select("id, role, message, timestamp")
     .eq("user_id", user.id)
-    .order("timestamp", { ascending: true })
+    .order("timestamp", { ascending: false })
     .limit(100)
 
-  return NextResponse.json({ messages: data || [] })
+  return NextResponse.json({ messages: (data || []).reverse() })
 }
 
 export async function POST(req: NextRequest) {
