@@ -30,13 +30,11 @@ export async function POST(req: NextRequest) {
   const user = await getOrCreateUser(session)
   if (!user) return NextResponse.json({ error: "Could not create user" }, { status: 500 })
 
-  const upsertData: Record<string, unknown> = {
-    user_id: user.id,
-    sync_frequency: body.sync_frequency ?? "30min",
-    lookback_period: body.lookback_period ?? "1month",
-    notification_preferences: body.notification_preferences ?? {},
-  }
-  if (body.timezone) upsertData.timezone = body.timezone
+  const upsertData: Record<string, unknown> = { user_id: user.id }
+  if (body.sync_frequency !== undefined) upsertData.sync_frequency = body.sync_frequency
+  if (body.lookback_period !== undefined) upsertData.lookback_period = body.lookback_period
+  if (body.notification_preferences !== undefined) upsertData.notification_preferences = body.notification_preferences
+  if (body.timezone !== undefined) upsertData.timezone = body.timezone
 
   const { data } = await supabase
     .from("settings")
