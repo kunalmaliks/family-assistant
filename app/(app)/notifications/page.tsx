@@ -114,7 +114,7 @@ export default function NotificationsPage() {
                           <span className={cn("text-[10px] font-semibold uppercase tracking-wide", cfg.color)}>
                             {cfg.label}
                           </span>
-                          <p className="text-sm text-white font-medium leading-snug mt-0.5">{n.title}</p>
+                          <p className="text-base text-white font-medium leading-snug mt-0.5">{n.title}</p>
                         </div>
                         <button
                           onClick={() => dismiss(n.id)}
@@ -129,7 +129,7 @@ export default function NotificationsPage() {
                         </button>
                       </div>
                       {n.body && (
-                        <p className="text-xs text-zinc-400 mt-1 leading-relaxed">{n.body}</p>
+                        <p className="text-sm text-zinc-400 mt-1 leading-relaxed">{n.body}</p>
                       )}
                       <p className="text-[10px] text-zinc-600 mt-1.5">{timeAgo(n.created_at)}</p>
                     </div>
