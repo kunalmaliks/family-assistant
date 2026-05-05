@@ -189,6 +189,9 @@ export default function ChatPage() {
         setAddedEventIds((prev) => new Set(prev).add(key))
         const label = suggestion.recurrence_label ? ` (${suggestion.recurrence_label})` : ""
         await saveNote(`✓ Calendar event added: ${suggestion.title} on ${suggestion.date}${suggestion.time ? ` at ${suggestion.time}` : ""}${label}`)
+      } else if (res.status !== 409) {
+        const data = await res.json().catch(() => ({}))
+        alert(data.error || "Failed to add event to calendar. Please try again.")
       }
     } finally {
       setAddingEventId(null)

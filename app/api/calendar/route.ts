@@ -44,8 +44,8 @@ export async function POST(req: NextRequest) {
   const { title, date, time, end_date, end_time, location, description, recurrence, timeZone } = await req.json()
   const tz = timeZone || "UTC"
 
-  const eventDate = new Date(time ? `${date}T${time}:00` : `${date}T23:59:59`)
-  if (eventDate < new Date()) {
+  const todayInUserTz = new Date().toLocaleDateString("en-CA", { timeZone: tz })
+  if (date < todayInUserTz) {
     return NextResponse.json({ error: "Cannot add past events to calendar" }, { status: 400 })
   }
   const supabase = createSupabaseAdminClient()
