@@ -24,12 +24,18 @@ export async function generateDailyBrief(
 
   if (existing && existing.length > 0) return
 
-  // Fetch today's calendar events (next 1 day)
-  const events = await fetchCalendarEvents(accessToken, refreshToken, 1, timezone)
   const today = new Date().toISOString().split("T")[0]
-  const todayEvents = events.filter((e) => e.date === today)
 
-  // Fetch emails from last 24 hours
+  // Fetch today's calendar events (next 1 day)
+  let todayEvents: Awaited<ReturnType<typeof fetchCalendarEvents>> = []
+  try {
+    const events = await fetchCalendarEvents(accessToken, refreshToken, 1, timezone)
+    todayEvents = events.filter((e) => e.date === today)
+  } catch (e) {
+    console.error("[daily-brief] calendar fetch failed:", e)
+  }
+
+  // Fetch emails from last 24 hours (by date_received — actual send date)
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
   const { data: recentEmails } = await supabase
     .from("emails")
@@ -37,9 +43,6 @@ export async function generateDailyBrief(
     .gte("date_received", since)
     .order("date_received", { ascending: false })
     .limit(20)
-
-  // Skip brief if nothing to report
-  if (todayEvents.length === 0 && (!recentEmails || recentEmails.length === 0)) return
 
   const calendarSection = todayEvents.length > 0
     ? todayEvents.map((e) => {

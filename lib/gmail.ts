@@ -212,7 +212,15 @@ async function extractAttachmentText(gmail: any, messageId: string, attachmentId
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       const pdfParse = require("pdf-parse/lib/pdf-parse.js") as (b: Buffer) => Promise<{ text: string }>
       const parsed = await pdfParse(buffer)
-      return parsed.text.slice(0, 5000).replace(/\s+/g, " ").trim()
+      // Preserve newlines so table structures (e.g. flight itineraries) remain readable
+      const text = parsed.text
+        .replace(/\r\n/g, "\n")
+        .replace(/[ \t]+/g, " ")
+        .replace(/\n{3,}/g, "\n\n")
+        .slice(0, 5000)
+        .trim()
+      if (!text) console.warn(`[gmail] PDF "${filename}" parsed but returned no text — likely image-based PDF`)
+      return text || null
     }
 
     if (isText) {

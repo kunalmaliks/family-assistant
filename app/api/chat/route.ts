@@ -71,7 +71,7 @@ async function formatEmailsWithAttachments(supabase: any, emails: EmailRow[]): P
     let text = `[${e.category}] ${e.subject} (from ${e.sender}, ${new Date(e.date_received).toLocaleDateString()})\n${e.body.slice(0, 2000)}`
     const atts = attachByEmail.get(e.id) || []
     for (const a of atts) {
-      text += `\n📎 ${a.file_name}:\n${a.text_content.slice(0, 2000)}`
+      text += `\n📎 ${a.file_name}:\n${a.text_content.slice(0, 3000)}`
     }
     return text
   })

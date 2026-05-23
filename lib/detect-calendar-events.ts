@@ -30,7 +30,7 @@ export async function detectCalendarEvents(
         content: `Extract appointments, events, or meetings from this email received on ${emailDate}.
 
 Subject: ${subject}
-Body: ${body.slice(0, 3000)}
+Body: ${body.slice(0, 6000)}
 
 Return a JSON array. Each item:
 - title: string (event name)
@@ -49,6 +49,7 @@ Rules:
 - Only events with specific dates (skip vague references)
 - Recurring events: one entry with recurrence rule, not multiple entries
 - Skip events before ${emailDate}
+- For flight itineraries: create one event per flight leg (e.g. "Flight LA2476: Lima → Los Angeles"), using the departure time as start time and arrival time as end time. Dates may be in DD/MM/YY format — convert to YYYY-MM-DD.
 - Return [] if nothing found
 
 JSON array only, no other text.`
