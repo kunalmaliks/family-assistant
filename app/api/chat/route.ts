@@ -158,7 +158,7 @@ export async function POST(req: NextRequest) {
     .single()
 
   const accessToken = (session.accessToken as string) || decryptToken(userRow?.google_access_token) || ""
-  const calendarEvents = await fetchCalendarEvents(accessToken, decryptToken(userRow?.google_refresh_token) || null, 2, userSettings?.timezone ?? undefined)
+  const calendarEvents = await fetchCalendarEvents(accessToken, decryptToken(userRow?.google_refresh_token) || null, 4, userSettings?.timezone ?? undefined, 1)
   const calendarContext = formatEventsForContext(calendarEvents)
 
   // Get last 10 chat messages

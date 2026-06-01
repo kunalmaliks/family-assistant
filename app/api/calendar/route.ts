@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
   if (!session?.user?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   const { searchParams } = new URL(req.url)
-  const monthsAhead = Math.min(parseInt(searchParams.get("months") || "2"), 11)
+  const monthsAhead = Math.min(parseInt(searchParams.get("months") || "4"), 11)
 
   const supabase = createSupabaseAdminClient()
   const user = await getOrCreateUser(session)

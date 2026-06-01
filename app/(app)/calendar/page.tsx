@@ -35,7 +35,7 @@ interface EditForm {
 export default function CalendarPage() {
   const today = new Date()
   const [monthOffset, setMonthOffset] = useState(0)
-  const [monthsAhead, setMonthsAhead] = useState(2)
+  const [monthsAhead, setMonthsAhead] = useState(4)
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedDate, setSelectedDate] = useState<string | null>(
