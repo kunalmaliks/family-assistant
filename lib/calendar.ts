@@ -18,9 +18,14 @@ export async function fetchCalendarEvents(
   monthsAhead = 2,
   timezone?: string
 ): Promise<CalendarEvent[]> {
-  const now = new Date()
-  const timeMin = new Date(now.getFullYear(), now.getMonth(), 1)
-  const timeMax = new Date(now.getFullYear(), now.getMonth() + monthsAhead + 1, 0, 23, 59, 59)
+  const tz = timezone || "America/Los_Angeles"
+  // Use user's timezone to determine current month — server runs UTC and may be a different date
+  const localDateStr = new Date().toLocaleDateString("en-CA", { timeZone: tz }) // "YYYY-MM-DD"
+  const [localYear, localMonthStr] = localDateStr.split("-")
+  const localYearNum = parseInt(localYear)
+  const localMonthNum = parseInt(localMonthStr) - 1 // 0-indexed
+  const timeMin = new Date(Date.UTC(localYearNum, localMonthNum, 1))
+  const timeMax = new Date(Date.UTC(localYearNum, localMonthNum + monthsAhead + 1, 0, 23, 59, 59))
 
   const events: CalendarEvent[] = []
 
