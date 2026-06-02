@@ -153,12 +153,17 @@ export default function ChatPage() {
       const res = await fetch(`/api/calendar/${edit.event_id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(edit),
+        body: JSON.stringify({ ...edit, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }),
       })
       if (res.ok) {
         setAddedEventIds((prev) => new Set(prev).add(msgId))
         await saveNote(`✓ Calendar event updated: ${edit.summary}`)
+      } else {
+        const data = await res.json().catch(() => ({}))
+        alert(data.error || "Failed to update event. Please try again.")
       }
+    } catch {
+      alert("Failed to update event. Please try again.")
     } finally {
       setAddingEventId(null)
     }

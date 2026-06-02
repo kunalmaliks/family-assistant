@@ -84,9 +84,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ ev
     })
 
     return NextResponse.json({ event: event.data })
-  } catch (e) {
-    console.error("[calendar] event update failed:", e)
-    return NextResponse.json({ error: "Failed to update calendar event" }, { status: 500 })
+  } catch (e: any) {
+    const msg = e?.errors?.[0]?.message || e?.message || String(e)
+    const status = e?.code || e?.status || 500
+    console.error("[calendar] event update failed:", status, msg, e)
+    return NextResponse.json({ error: `Failed to update calendar event: ${msg}` }, { status: 500 })
   }
 }
 

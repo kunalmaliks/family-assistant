@@ -112,7 +112,12 @@ export default function CalendarPage() {
         setEditingEvent(null)
         setEditForm(null)
         fetchEvents()
+      } else {
+        const data = await res.json().catch(() => ({}))
+        alert(data.error || "Failed to update event. Please try again.")
       }
+    } catch {
+      alert("Failed to update event. Please try again.")
     } finally {
       setSaving(false)
     }
