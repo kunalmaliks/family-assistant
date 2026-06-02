@@ -4,6 +4,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase"
 import { getOrCreateUser } from "@/lib/get-or-create-user"
 import { google } from "googleapis"
 import { decryptToken } from "@/lib/token-crypto"
+import { normalizeTime } from "@/lib/utils"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function getGAuth(session: any) {
@@ -58,11 +59,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ ev
       ? ex.end.dateTime.split("T")[1]?.substring(0, 5)
       : undefined
 
-    // Merge: use provided values or fall back to existing
+    // Merge: use provided values or fall back to existing; normalize times to HH:MM
     const date     = body.date     ?? currentDate
-    const time     = body.time     ?? (isAllDay ? undefined : currentTime)
+    const time     = normalizeTime(body.time     ?? (isAllDay ? undefined : currentTime))
     const end_date = body.end_date ?? currentEndDate
-    const end_time = body.end_time ?? (isAllDay ? undefined : currentEndTime)
+    const end_time = normalizeTime(body.end_time ?? (isAllDay ? undefined : currentEndTime))
     const title    = body.title       ?? ex.summary
     const location = body.location   !== undefined ? body.location : ex.location
     const description = body.description !== undefined ? body.description : ex.description
