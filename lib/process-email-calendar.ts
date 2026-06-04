@@ -63,14 +63,18 @@ export async function processEmailForCalendar(
       const time = normalizeTime(event.time)
       const end_time = normalizeTime(event.end_time)
 
+      // Safety: never create a multi-day span for non-recurring events.
+      // If end_date differs from date and there's no recurrence, clamp it.
+      const endDate = (!event.recurrence && event.end_date && event.end_date !== event.date)
+        ? event.date
+        : (event.end_date || event.date)
+
       const start = time
         ? { dateTime: `${event.date}T${time}:00`, timeZone: tz }
         : { date: event.date }
 
       const end = end_time
-        ? { dateTime: `${event.end_date || event.date}T${end_time}:00`, timeZone: tz }
-        : event.end_date
-        ? { date: event.end_date }
+        ? { dateTime: `${endDate}T${end_time}:00`, timeZone: tz }
         : time
         ? { dateTime: `${event.date}T${time}:00`, timeZone: tz }
         : { date: event.date }
