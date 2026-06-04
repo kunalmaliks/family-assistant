@@ -2,6 +2,7 @@ import { google } from "googleapis"
 import { detectCalendarEvents } from "./detect-calendar-events"
 import { checkCalendarDuplicate } from "./duplicate-check"
 import { createSupabaseAdminClient } from "./supabase"
+import { normalizeTime } from "./utils"
 
 export async function processEmailForCalendar(
   subject: string,
@@ -59,16 +60,19 @@ export async function processEmailForCalendar(
       }
 
       // Create the event in Google Calendar
-      const start = event.time
-        ? { dateTime: `${event.date}T${event.time}:00`, timeZone: tz }
+      const time = normalizeTime(event.time)
+      const end_time = normalizeTime(event.end_time)
+
+      const start = time
+        ? { dateTime: `${event.date}T${time}:00`, timeZone: tz }
         : { date: event.date }
 
-      const end = event.end_time
-        ? { dateTime: `${event.end_date || event.date}T${event.end_time}:00`, timeZone: tz }
+      const end = end_time
+        ? { dateTime: `${event.end_date || event.date}T${end_time}:00`, timeZone: tz }
         : event.end_date
         ? { date: event.end_date }
-        : event.time
-        ? { dateTime: `${event.date}T${event.time}:00`, timeZone: tz }
+        : time
+        ? { dateTime: `${event.date}T${time}:00`, timeZone: tz }
         : { date: event.date }
 
       const created = await calendar.events.insert({
