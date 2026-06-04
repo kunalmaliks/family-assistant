@@ -17,7 +17,7 @@ const calendarTool: Anthropic.Tool = {
       title: { type: "string", description: "Short event title" },
       date: { type: "string", description: "Start date of the first occurrence in YYYY-MM-DD format" },
       time: { type: "string", description: "Start time in zero-padded 24h HH:MM format (e.g. 13:00 for 1pm, 09:00 for 9am), omit if all-day" },
-      end_date: { type: "string", description: "End date in YYYY-MM-DD format, defaults to same as date" },
+      end_date: { type: "string", description: "End date in YYYY-MM-DD format — must be the same day as date. Never use this for a recurring series end; that goes in RRULE UNTIL." },
       end_time: { type: "string", description: "End time in zero-padded 24h HH:MM format (e.g. 18:00 for 6pm), omit if all-day" },
       location: { type: "string", description: "Location if mentioned" },
       description: { type: "string", description: "Brief context from the email" },

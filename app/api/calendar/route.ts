@@ -98,9 +98,7 @@ export async function POST(req: NextRequest) {
           ? { dateTime: `${date}T${time}:00`, timeZone: tz }
           : { date },
         end: end_time
-          ? { dateTime: `${end_date || date}T${end_time}:00`, timeZone: tz }
-          : end_date
-          ? { date: end_date }
+          ? { dateTime: `${date}T${end_time}:00`, timeZone: tz }
           : time
           ? { dateTime: `${date}T${time}:00`, timeZone: tz }
           : { date },
