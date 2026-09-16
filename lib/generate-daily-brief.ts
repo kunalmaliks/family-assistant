@@ -39,10 +39,23 @@ export async function generateDailyBrief(
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
   const { data: recentEmails } = await supabase
     .from("emails")
-    .select("subject, sender, category, date_received")
+    .select("id, subject, sender, category, date_received, body")
     .gte("date_received", since)
     .order("date_received", { ascending: false })
     .limit(20)
+
+  const attachmentsByEmail = new Map<string, string[]>()
+  if (recentEmails && recentEmails.length > 0) {
+    const { data: attachments } = await supabase
+      .from("attachments")
+      .select("email_id, text_content")
+      .in("email_id", recentEmails.map((e) => e.id))
+      .not("text_content", "is", null)
+    for (const a of attachments || []) {
+      if (!attachmentsByEmail.has(a.email_id)) attachmentsByEmail.set(a.email_id, [])
+      attachmentsByEmail.get(a.email_id)!.push(a.text_content)
+    }
+  }
 
   const calendarSection = todayEvents.length > 0
     ? todayEvents.map((e) => {
@@ -53,25 +66,33 @@ export async function generateDailyBrief(
     : "No events today."
 
   const emailSection = recentEmails && recentEmails.length > 0
-    ? recentEmails.map((e) => `• [${e.category}] ${e.subject} — from ${e.sender}`).join("\n")
+    ? recentEmails.map((e) => {
+        const attachmentText = (attachmentsByEmail.get(e.id) || []).join("\n").slice(0, 1200)
+        return `---\n[${e.category}] ${e.subject} (from ${e.sender})\n${e.body.slice(0, 1200)}${attachmentText ? `\nAttachment content:\n${attachmentText}` : ""}`
+      }).join("\n")
     : "No new emails."
 
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
   const response = await anthropic.messages.create({
     model: "claude-haiku-4-5-20251001",
-    max_tokens: 300,
+    max_tokens: 800,
     messages: [{
       role: "user",
-      content: `Write a brief, friendly morning summary (3–5 sentences max) for a family assistant app. Today is ${today}.
+      content: `Write a morning brief for a family assistant app. Today is ${today}.
 
 Today's calendar:
 ${calendarSection}
 
-Recent emails (last 24 hours):
+Recent emails (last 24 hours) — full content below, use it to pull out concrete details (specific dates, dollar amounts, deadlines, names, what action if any is needed):
 ${emailSection}
 
-Highlight the most important things. Be concise and warm. No bullet points — write as a short paragraph.`
+Write it as PLAIN TEXT (no markdown, no asterisks, no # headers) using this structure:
+- One short warm opening line.
+- If there are events today, a line "Today:" followed by each event on its own line starting with "• ".
+- If there are emails worth flagging, a line "From your emails:" followed by one "• " bullet per key item. Each bullet must state the actual concrete detail from the email content — e.g. "Fire drill Sept 17, Back to School Assembly Sept 18 at 12:30pm (K-2), Curriculum Night Oct 8 5-6:30pm" — never a vague placeholder like "an email about school" or "some important emails to review". Combine closely related points from the same email into one bullet; use a separate bullet per distinct topic/email otherwise.
+- Skip a section entirely if there's nothing to report in it.
+- Keep each bullet to one line. Be concise overall.`
     }]
   })
 

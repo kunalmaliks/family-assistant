@@ -129,7 +129,7 @@ export default function NotificationsPage() {
                         </button>
                       </div>
                       {n.body && (
-                        <p className="text-sm text-zinc-400 mt-1 leading-relaxed">{n.body}</p>
+                        <p className="text-sm text-zinc-400 mt-1 leading-relaxed whitespace-pre-line">{n.body}</p>
                       )}
                       <p className="text-[10px] text-zinc-600 mt-1.5">{timeAgo(n.created_at)}</p>
                     </div>
