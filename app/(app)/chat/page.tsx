@@ -24,6 +24,7 @@ interface CalendarSuggestion {
   description?: string
   recurrence?: string
   recurrence_label?: string
+  excluded_dates?: string[]
   _duplicate?: string
 }
 
@@ -37,6 +38,8 @@ interface CalendarEdit {
   end_time?: string
   location?: string
   description?: string
+  recurrence?: string
+  excluded_dates?: string[]
 }
 
 interface Message {
@@ -365,6 +368,11 @@ export default function ChatPage() {
                         <p className="flex items-center gap-1 text-xs text-amber-500/80 mt-1">
                           <RefreshCw size={10} />
                           {suggestion.recurrence_label}
+                        </p>
+                      )}
+                      {suggestion.excluded_dates && suggestion.excluded_dates.length > 0 && (
+                        <p className="text-xs text-zinc-500 mt-1">
+                          Except: {suggestion.excluded_dates.map((d) => formatEventDate(d)).join(", ")}
                         </p>
                       )}
                     </div>

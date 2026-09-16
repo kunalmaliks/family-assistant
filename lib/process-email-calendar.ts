@@ -2,7 +2,7 @@ import { google } from "googleapis"
 import { detectCalendarEvents } from "./detect-calendar-events"
 import { checkCalendarDuplicate } from "./duplicate-check"
 import { createSupabaseAdminClient } from "./supabase"
-import { normalizeTime } from "./utils"
+import { normalizeTime, buildRecurrenceLines } from "./utils"
 
 export async function processEmailForCalendar(
   subject: string,
@@ -16,11 +16,23 @@ export async function processEmailForCalendar(
   // Skip future-dated emails (data integrity guard)
   if (new Date(emailDate) > new Date()) return
 
-  const emailDateOnly = emailDate.split("T")[0]
-  const events = await detectCalendarEvents(subject, body, emailDateOnly)
-  if (events.length === 0) return
-
   const supabase = createSupabaseAdminClient()
+  const emailDateOnly = emailDate.split("T")[0]
+
+  let events
+  try {
+    events = await detectCalendarEvents(subject, body, emailDateOnly)
+  } catch (e) {
+    console.error("[process-email-calendar] detection failed:", subject, e)
+    await supabase.from("notifications").insert({
+      user_id: userId,
+      type: "review",
+      title: `Couldn't scan "${subject}" for events`,
+      body: "Automatic calendar detection failed for this email — please check it manually for any dates to add.",
+    })
+    return
+  }
+  if (events.length === 0) return
 
   const gAuth = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
@@ -83,7 +95,7 @@ export async function processEmailForCalendar(
           location: event.location,
           start,
           end,
-          recurrence: event.recurrence ? [event.recurrence] : undefined,
+          recurrence: event.recurrence ? buildRecurrenceLines(event.recurrence, event.excluded_dates, time, tz) : undefined,
           reminders: { useDefault: true },
         },
       })
@@ -101,6 +113,15 @@ export async function processEmailForCalendar(
       })
     } catch (e) {
       console.error("[process-email-calendar] event failed:", event.title, e)
+      try {
+        await supabase.from("notifications").insert({
+          user_id: userId,
+          type: "review",
+          title: `Couldn't add "${event.title}"`,
+          body: `Found this event in "${subject}" (${event.date}) but adding it to your calendar failed — please add it manually.`,
+          event_date: event.date,
+        })
+      } catch {}
     }
   }
 }

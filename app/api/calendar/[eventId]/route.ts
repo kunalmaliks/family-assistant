@@ -4,7 +4,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase"
 import { getOrCreateUser } from "@/lib/get-or-create-user"
 import { google } from "googleapis"
 import { decryptToken } from "@/lib/token-crypto"
-import { normalizeTime } from "@/lib/utils"
+import { normalizeTime, buildRecurrenceLines } from "@/lib/utils"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function getGAuth(session: any) {
@@ -68,6 +68,26 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ ev
     const location = body.location   !== undefined ? body.location : ex.location
     const description = body.description !== undefined ? body.description : ex.description
 
+    // Recurrence: only touch it if the caller is changing the RRULE or the
+    // exception dates. Otherwise omit the key so patch() leaves it alone.
+    let recurrence: string[] | undefined
+    if (body.recurrence !== undefined || body.excluded_dates !== undefined) {
+      const existingRecurrence: string[] = ex.recurrence || []
+      const rrule = body.recurrence ?? existingRecurrence.find((r) => r.toUpperCase().startsWith("RRULE"))
+      if (rrule) {
+        const excludedDates = body.excluded_dates !== undefined
+          ? body.excluded_dates
+          // no new exceptions given — keep any dates already excluded
+          : existingRecurrence
+              .filter((r) => r.toUpperCase().startsWith("EXDATE"))
+              .flatMap((r) => (r.split(":")[1] || "").split(","))
+              .map((d) => d.slice(0, 8))
+              .filter(Boolean)
+              .map((d) => `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}`)
+        recurrence = buildRecurrenceLines(rrule, excludedDates, time, timeZone)
+      }
+    }
+
     const event = await calendar.events.patch({
       calendarId: "primary",
       eventId,
@@ -81,6 +101,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ ev
         end: end_time
           ? { dateTime: `${end_date}T${end_time}:00`, timeZone }
           : { date: end_date },
+        recurrence,
       },
     })
 

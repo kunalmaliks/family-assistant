@@ -6,7 +6,7 @@ import { fetchCalendarEvents } from "@/lib/calendar"
 import { google } from "googleapis"
 import { decryptToken } from "@/lib/token-crypto"
 import { checkCalendarDuplicate } from "@/lib/duplicate-check"
-import { normalizeTime } from "@/lib/utils"
+import { normalizeTime, buildRecurrenceLines } from "@/lib/utils"
 
 export async function GET(req: NextRequest) {
   const session = await auth()
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session?.user?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  const { title, date, time: rawTime, end_date, end_time: rawEndTime, location, description, recurrence, timeZone } = await req.json()
+  const { title, date, time: rawTime, end_date, end_time: rawEndTime, location, description, recurrence, excluded_dates, timeZone } = await req.json()
   const time = normalizeTime(rawTime)
   const end_time = normalizeTime(rawEndTime)
   const tz = timeZone || "UTC"
@@ -88,6 +88,8 @@ export async function POST(req: NextRequest) {
 
     const calendar = google.calendar({ version: "v3", auth: gAuth })
 
+    const recurrenceLines = recurrence ? buildRecurrenceLines(recurrence, excluded_dates, time, tz) : undefined
+
     const event = await calendar.events.insert({
       calendarId: "primary",
       requestBody: {
@@ -102,7 +104,7 @@ export async function POST(req: NextRequest) {
           : time
           ? { dateTime: `${date}T${time}:00`, timeZone: tz }
           : { date },
-        recurrence: recurrence ? [recurrence] : undefined,
+        recurrence: recurrenceLines,
         reminders: { useDefault: true },
       },
     })

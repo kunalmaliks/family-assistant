@@ -23,3 +23,24 @@ export function normalizeTime(time: string | undefined): string | undefined {
   if (!match) return undefined
   return `${match[1].padStart(2, "0")}:${match[2]}`
 }
+
+// Builds a Google Calendar `recurrence` array (RRULE + optional EXDATE) so
+// skipped occurrences in a recurring series are actually excluded.
+export function buildRecurrenceLines(
+  rrule: string,
+  excludedDates: unknown,
+  time: string | undefined,
+  timeZone: string
+): string[] {
+  const lines = [rrule]
+  if (!Array.isArray(excludedDates)) return lines
+  const validDates = excludedDates.filter(
+    (d): d is string => typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d)
+  )
+  if (validDates.length === 0) return lines
+  const exdate = time
+    ? `EXDATE;TZID=${timeZone}:${validDates.map((d) => `${d.replace(/-/g, "")}T${time.replace(":", "")}00`).join(",")}`
+    : `EXDATE;VALUE=DATE:${validDates.map((d) => d.replace(/-/g, "")).join(",")}`
+  lines.push(exdate)
+  return lines
+}

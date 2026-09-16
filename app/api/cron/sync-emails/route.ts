@@ -4,7 +4,9 @@ import { syncEmailsForUser } from "@/lib/gmail"
 import { decryptToken } from "@/lib/token-crypto"
 import { generateDailyBrief } from "@/lib/generate-daily-brief"
 
-// Vercel Cron: runs every 30 minutes
+// Vercel Cron: runs once daily at 7am UTC (see vercel.json). The per-user
+// sync_frequency setting only controls skip logic within this daily run —
+// it cannot make syncs happen more often than the cron itself fires.
 export const dynamic = "force-dynamic"
 
 export async function GET(req: Request) {

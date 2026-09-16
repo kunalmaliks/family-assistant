@@ -10,7 +10,7 @@ import { decryptToken } from "@/lib/token-crypto"
 const calendarTool: Anthropic.Tool = {
   name: "suggest_calendar_event",
   description:
-    "Call this whenever you detect a specific schedulable event, deadline, or appointment mentioned in the emails or conversation. Only call it when you have a concrete date that is in the future. Never suggest past events. For recurring events, use the recurrence field.",
+    "Call this whenever you detect a specific schedulable event, deadline, or appointment mentioned in the emails or conversation. Only call it when you have a concrete date that is in the future. Never suggest past events. For recurring events, use the recurrence field. If the source material lists specific occurrences that are skipped or canceled (e.g. 'except Friday, September 18, 2026'), always populate excluded_dates with those dates — do not silently drop them.",
   input_schema: {
     type: "object" as const,
     properties: {
@@ -23,6 +23,11 @@ const calendarTool: Anthropic.Tool = {
       description: { type: "string", description: "Brief context from the email" },
       recurrence: { type: "string", description: "RRULE string for recurring events, e.g. RRULE:FREQ=WEEKLY;BYDAY=SU;UNTIL=20261231T235959Z. Only include if the event repeats." },
       recurrence_label: { type: "string", description: "Human-readable recurrence description shown to the user, e.g. 'Every Sunday until Dec 31, 2026'" },
+      excluded_dates: {
+        type: "array",
+        items: { type: "string" },
+        description: "Dates in YYYY-MM-DD format that must be SKIPPED within the recurring series (no occurrence created on these dates), e.g. holidays or explicitly canceled sessions mentioned in the source material. Only for recurring events; omit if there are no exceptions.",
+      },
     },
     required: ["title", "date"],
   },
@@ -31,7 +36,7 @@ const calendarTool: Anthropic.Tool = {
 const editCalendarTool: Anthropic.Tool = {
   name: "edit_calendar_event",
   description:
-    "Call this when the user wants to modify an existing calendar event. Use the event ID from the calendar context (shown as [ID:xxx]). Only include fields that are changing.",
+    "Call this when the user wants to modify an existing calendar event, including fixing a recurring series that is missing exception dates (occurrences that should be skipped). Use the event ID from the calendar context (shown as [ID:xxx]). Only include fields that are changing.",
   input_schema: {
     type: "object" as const,
     properties: {
@@ -43,6 +48,12 @@ const editCalendarTool: Anthropic.Tool = {
       end_time: { type: "string", description: "New end time in zero-padded 24h HH:MM format (e.g. 18:00 for 6pm)" },
       location: { type: "string", description: "New location" },
       description: { type: "string", description: "New description" },
+      recurrence: { type: "string", description: "New RRULE string, only if the recurrence pattern itself is changing." },
+      excluded_dates: {
+        type: "array",
+        items: { type: "string" },
+        description: "For a recurring event, the FULL list of dates (YYYY-MM-DD) that should be skipped/canceled within the series — replaces any exceptions currently set. Use this to fix a recurring series that was created without its exception dates.",
+      },
       summary: { type: "string", description: "Human-readable summary of what is changing, e.g. 'Move Ballet Class to 3:00–3:45 PM'" },
     },
     required: ["event_id", "summary"],
