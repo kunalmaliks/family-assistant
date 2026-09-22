@@ -104,6 +104,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async signIn({ user, account }) {
       if (!user.email) return false
       const supabase = createSupabaseAdminClient()
+
+      // Allowlist gate: only emails that already have a users row may sign in.
+      // This app is limited-beta — new accounts are never auto-created here.
+      const { data: existing } = await supabase
+        .from("users")
+        .select("id")
+        .eq("email", user.email)
+        .single()
+      if (!existing) return false
+
       await supabase.from("users").upsert(
         {
           email: user.email,

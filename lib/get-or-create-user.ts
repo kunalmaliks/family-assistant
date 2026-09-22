@@ -24,17 +24,8 @@ export async function getOrCreateUser(session: SessionLike) {
     return null
   }
 
-  // Insert new user
-  const { data: created, error: insertError } = await supabase
-    .from("users")
-    .insert({ email, name: session.user?.name })
-    .select("id")
-    .single()
-
-  if (insertError) {
-    console.error("[getOrCreateUser] insert error:", insertError)
-    return null
-  }
-
-  return created
+  // App is limited-beta: never auto-create a user here. A missing row means
+  // this email isn't allowlisted (or the signIn callback's gate should have
+  // already blocked the session) — treat it as "no such user".
+  return null
 }

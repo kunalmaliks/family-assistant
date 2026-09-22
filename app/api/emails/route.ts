@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { createSupabaseAdminClient } from "@/lib/supabase"
+import { getOrCreateUser } from "@/lib/get-or-create-user"
 
 export async function GET(req: NextRequest) {
   const session = await auth()
   if (!session?.user?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   const supabase = createSupabaseAdminClient()
+  const user = await getOrCreateUser(session)
+  if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 })
+
   const { searchParams } = new URL(req.url)
   const category = searchParams.get("category")
 
@@ -15,6 +19,7 @@ export async function GET(req: NextRequest) {
   let query = supabase
     .from("emails")
     .select("id, gmail_id, sender, subject, body, date_received, category, has_attachment")
+    .eq("user_id", user.id)
     .order("date_received", { ascending: false })
     .limit(50)
 
@@ -25,6 +30,7 @@ export async function GET(req: NextRequest) {
       .from("category_rules")
       .select("rule_type, rule_value")
       .eq("id", ruleId)
+      .eq("user_id", user.id)
       .single()
     if (rule) {
       if (rule.rule_type === "domain" || rule.rule_type === "sender") {

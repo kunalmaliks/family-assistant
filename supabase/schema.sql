@@ -14,7 +14,8 @@ create table if not exists users (
 -- Emails
 create table if not exists emails (
   id uuid primary key default gen_random_uuid(),
-  gmail_id text unique not null,
+  user_id uuid references users(id) on delete cascade not null,
+  gmail_id text not null,
   sender text not null,
   subject text not null,
   body text,
@@ -22,7 +23,8 @@ create table if not exists emails (
   category text not null default 'Other',
   embedding vector(1536),
   has_attachment boolean default false,
-  created_at timestamptz default now()
+  created_at timestamptz default now(),
+  unique (user_id, gmail_id)
 );
 
 -- Attachments
@@ -79,7 +81,9 @@ create table if not exists settings (
 -- pgvector similarity search function
 create or replace function match_emails(
   query_embedding vector(1536),
-  match_count int default 5
+  match_count int default 5,
+  match_threshold float default 0.0,
+  filter_user_id uuid default null
 )
 returns table (
   id uuid,
@@ -106,12 +110,15 @@ as $$
     1 - (embedding <=> query_embedding) as similarity
   from emails
   where embedding is not null
+    and (filter_user_id is null or user_id = filter_user_id)
+    and 1 - (embedding <=> query_embedding) >= match_threshold
   order by embedding <=> query_embedding
   limit match_count;
 $$;
 
 -- Indexes
 create index if not exists emails_date_idx on emails(date_received desc);
+create index if not exists emails_user_idx on emails(user_id);
 create index if not exists emails_category_idx on emails(category);
 create index if not exists chat_history_user_idx on chat_history(user_id, timestamp desc);
 create index if not exists category_rules_user_idx on category_rules(user_id);

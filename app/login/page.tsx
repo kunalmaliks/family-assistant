@@ -1,11 +1,22 @@
 "use client"
 
 import { signIn } from "next-auth/react"
-import { useState } from "react"
+import { Suspense, useState } from "react"
+import { useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginContent />
+    </Suspense>
+  )
+}
+
+function LoginContent() {
   const [loading, setLoading] = useState(false)
+  const searchParams = useSearchParams()
+  const denied = searchParams.get("error") === "AccessDenied"
 
   async function handleSignIn() {
     setLoading(true)
@@ -42,6 +53,15 @@ export default function LoginPage() {
             </div>
           ))}
         </div>
+
+        {/* Access denied banner */}
+        {denied && (
+          <div className="w-full bg-red-950/50 border border-red-900 rounded-xl px-4 py-3">
+            <p className="text-red-300 text-sm text-center">
+              This app is currently under limited beta. Please try again later.
+            </p>
+          </div>
+        )}
 
         {/* Sign in button */}
         <Button

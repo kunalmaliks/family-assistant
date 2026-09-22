@@ -19,7 +19,7 @@ export async function syncEmailsForUser(
   refreshToken: string,
   lookbackDays = 30,
   ruleId?: string,
-  userId?: string,
+  userId: string = "",
   lastSyncedAt?: string | null,
   timezone?: string
 ): Promise<SyncSummary> {
@@ -38,8 +38,11 @@ export async function syncEmailsForUser(
   after.setDate(after.getDate() - lookbackDays)
   const afterTimestamp = Math.floor(after.getTime() / 1000)
 
-  // Load category rules
-  let rulesQuery = supabase.from("category_rules").select("id, rule_type, rule_value, category")
+  // Load category rules — scoped to this user only
+  let rulesQuery = supabase
+    .from("category_rules")
+    .select("id, rule_type, rule_value, category")
+    .eq("user_id", userId)
   if (ruleId) rulesQuery = rulesQuery.eq("id", ruleId)
   const { data: rules } = await rulesQuery
 
@@ -73,8 +76,8 @@ export async function syncEmailsForUser(
     pageToken = listRes.data.nextPageToken
   }
 
-  // Load existing gmail_ids to avoid duplicates
-  const { data: existing } = await supabase.from("emails").select("gmail_id")
+  // Load existing gmail_ids to avoid duplicates (scoped to this user)
+  const { data: existing } = await supabase.from("emails").select("gmail_id").eq("user_id", userId)
   const existingIds = new Set((existing || []).map((e: { gmail_id: string }) => e.gmail_id))
 
   const summary: SyncSummary = {
@@ -145,6 +148,7 @@ export async function syncEmailsForUser(
       const { data: insertedEmail, error: insertError } = await supabase
         .from("emails")
         .insert({
+          user_id: userId,
           gmail_id: messageId,
           sender,
           subject,

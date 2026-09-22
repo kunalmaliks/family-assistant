@@ -18,6 +18,7 @@ export type Category = "School" | "Payments" | "Travel" | "Activities" | "Other"
 
 export interface Email {
   id: string
+  user_id: string
   gmail_id: string
   sender: string
   subject: string

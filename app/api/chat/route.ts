@@ -143,13 +143,19 @@ export async function POST(req: NextRequest) {
       input: ragQuery,
     })
     const embedding = embeddingRes.data[0].embedding
-    const query = supabase.rpc("match_emails", { query_embedding: embedding, match_count: 15, match_threshold: 0.3 })
+    const query = supabase.rpc("match_emails", {
+      query_embedding: embedding,
+      match_count: 15,
+      match_threshold: 0.3,
+      filter_user_id: user.id,
+    })
     const { data: emails } = await query
     relevantEmails = await formatEmailsWithAttachments(supabase, emails || [])
   } catch {
     const { data: emails } = await supabase
       .from("emails")
       .select("id, subject, sender, date_received, body, category")
+      .eq("user_id", user.id)
       .order("date_received", { ascending: false })
       .limit(15)
     relevantEmails = await formatEmailsWithAttachments(supabase, emails || [])

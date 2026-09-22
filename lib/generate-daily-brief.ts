@@ -40,6 +40,7 @@ export async function generateDailyBrief(
   const { data: recentEmails } = await supabase
     .from("emails")
     .select("id, subject, sender, category, date_received, body")
+    .eq("user_id", userId)
     .gte("date_received", since)
     .order("date_received", { ascending: false })
     .limit(20)

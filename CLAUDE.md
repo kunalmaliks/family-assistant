@@ -87,8 +87,10 @@ A mobile-friendly family assistant web app that connects to Gmail, uses AI to an
 ### 5. Multi-user Support
 
 - Two users with individual Google logins via NextAuth.js
-- Shared access to same emails and calendar
-- Shared chat history visible to both users
+- Login is allowlist-only — only emails that already have a `users` row can sign in; new accounts are never auto-created (see Architecture Decisions)
+- Each user's emails, attachments, and category-rule matching are fully isolated by `user_id` — no shared inbox
+- Chat history is per-user (was always `user_id`-scoped in practice, despite this doc previously describing it as shared)
+- Google Calendar remains per-account by nature (each user's events come live from their own Google Calendar)
 
 ### 6. Sync Architecture
 
@@ -110,7 +112,7 @@ A mobile-friendly family assistant web app that connects to Gmail, uses AI to an
 ## Database Schema
 
 - users — id, email, name, google_access_token, google_refresh_token
-- emails — id, gmail_id (unique), sender, subject, body, date_received, category, embedding (vector), has_attachment
+- emails — id, user_id, gmail_id (unique per user_id), sender, subject, body, date_received, category, embedding (vector), has_attachment
 - attachments — id, email_id, file_url, file_name, text_content
 - chat_history — id, user_id, message, role (user/assistant), timestamp
 - category_rules — id, user_id, rule_type (sender/domain/keyword), rule_value, category, created_at
@@ -127,6 +129,8 @@ New email arrives
 
 ## Architecture Decisions
 
+- Login is allowlist-only (limited beta) — the NextAuth `signIn` callback in `auth.ts` denies any email without an existing `users` row before ever touching the database; `getOrCreateUser` also never auto-creates. A denied sign-in redirects to `/login?error=AccessDenied` with a "limited beta" message. New users must be added manually (insert a `users` row) before they can sign in.
+- Emails/attachments are fully isolated per user_id — `emails.user_id` is required and part of the `(user_id, gmail_id)` unique constraint; category-rule matching during sync is scoped to the syncing user's own rules; `match_emails` pgvector RPC takes a `filter_user_id` param. Adopted after an out-of-allowlist Google account was accidentally signed in and its Gmail sync couldn't be distinguished from real data (no per-account attribution existed).
 - No AI auto-categorization — rules only; unmatched emails not stored at all
 - getOrCreateUser called defensively in every API route (handles failed signIn callback)
 - RLS enabled on Supabase; server-side API routes use service role key (sb_secret_... prefix) to bypass RLS
@@ -186,6 +190,11 @@ New email arrives
 - Email body truncated for HTML emails with embedded CSS → fixed with style/script block stripping in stripHtml()
 - Calendar end time was same as start time → added end_date/end_time fields throughout
 - Claude suggesting past events → today's date in system prompt, past date guard in API, future-only tool description
+
+#### Session 3 — Sep 20–21
+- **Login allowlist gate** — `signIn` callback and `getOrCreateUser` no longer auto-create `users` rows for unrecognized emails; denied sign-ins redirect to `/login?error=AccessDenied` with a "limited beta" message
+- **Per-user data isolation** — added required `emails.user_id`, changed the unique constraint to `(user_id, gmail_id)`, scoped sync-time category-rule matching, the Emails page list/recategorize endpoints, the daily brief, and chat RAG (`match_emails` RPC + fallback) all by `user_id`
+- **Incident response** — an out-of-allowlist Google account (`kunalmaliks@gmail.com`, a typo login) was signed in for ~3 days before being caught; its `users`/`settings` rows were deleted, and the above isolation work was done specifically because emails synced during that window couldn't be attributed to an account after the fact
 
 ### Next Steps
 
