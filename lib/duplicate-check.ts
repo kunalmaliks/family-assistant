@@ -1,5 +1,5 @@
 import { google } from "googleapis"
-import Anthropic from "@anthropic-ai/sdk"
+import { generateText } from "./ai-provider"
 
 export interface DuplicateCheckResult {
   isDuplicate: boolean
@@ -49,22 +49,14 @@ export async function checkCalendarDuplicate(
 
     if (existingEvents.length === 0) return { isDuplicate: false }
 
-    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-    const response = await anthropic.messages.create({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 100,
-      messages: [{
-        role: "user",
-        content: `Does any event in this list refer to the same appointment as "${title}"? Consider fuzzy matches, abbreviations, and different formats.
+    const prompt = `Does any event in this list refer to the same appointment as "${title}"? Consider fuzzy matches, abbreviations, and different formats.
 
 Existing events on ${date}:
 ${existingEvents.map((e, i) => `${i + 1}. ${e.title}`).join("\n")}
 
 Reply with JSON only: {"isDuplicate": true/false, "matchIndex": <1-based index or null>}`
-      }]
-    })
 
-    const text = response.content[0].type === "text" ? response.content[0].text : ""
+    const text = await generateText(prompt, 100)
     const jsonMatch = text.match(/\{[\s\S]*\}/)
     if (!jsonMatch) return { isDuplicate: false }
 

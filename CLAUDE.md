@@ -129,6 +129,7 @@ New email arrives
 
 ## Architecture Decisions
 
+- Switchable AI provider for cheap-tier calls (lib/ai-provider.ts) — `detectCalendarEvents`, `checkCalendarDuplicate`, `generateDailyBrief`, and attachment OCR (`extractDocumentText` in lib/gmail.ts) all route through `generateText`/`generateVisionText`, which branch on `AI_PROVIDER` between Claude Haiku (default) and Gemini (model constant `GEMINI_MODEL` in lib/ai-provider.ts). Added because these 4 sites run on every synced email/attachment and were driving Claude API cost; chat stays on Claude Sonnet 4.6 always — not part of this switch. Originally pinned to `gemini-2.5-flash-lite` per user preference over the auto-updating `-latest` alias, but that model returned a hard 404 ("no longer available to new users") on live testing 2026-09-23 — switched to `gemini-3.5-flash-lite` (Google's own error message's recommended replacement). Smoke-tested end-to-end (text, vision, and the exact JSON-extraction prompt shape used by detectCalendarEvents) before shipping.
 - Login is allowlist-only (limited beta) — the NextAuth `signIn` callback in `auth.ts` denies any email without an existing `users` row before ever touching the database; `getOrCreateUser` also never auto-creates. A denied sign-in redirects to `/login?error=AccessDenied` with a "limited beta" message. New users must be added manually (insert a `users` row) before they can sign in.
 - Emails/attachments are fully isolated per user_id — `emails.user_id` is required and part of the `(user_id, gmail_id)` unique constraint; category-rule matching during sync is scoped to the syncing user's own rules; `match_emails` pgvector RPC takes a `filter_user_id` param. Adopted after an out-of-allowlist Google account was accidentally signed in and its Gmail sync couldn't be distinguished from real data (no per-account attribution existed).
 - No AI auto-categorization — rules only; unmatched emails not stored at all
@@ -145,6 +146,8 @@ New email arrives
 
 - ANTHROPIC_API_KEY
 - OPENAI_API_KEY
+- AI_PROVIDER (optional — "gemini" to route the 4 cheap-tier AI calls to Gemini; unset/anything else keeps Claude, the default)
+- GEMINI_API_KEY (required only when AI_PROVIDER=gemini)
 - GOOGLE_CLIENT_ID
 - GOOGLE_CLIENT_SECRET
 - SUPABASE_URL

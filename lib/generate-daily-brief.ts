@@ -1,6 +1,6 @@
-import Anthropic from "@anthropic-ai/sdk"
 import { fetchCalendarEvents } from "./calendar"
 import { createSupabaseAdminClient } from "./supabase"
+import { generateText } from "./ai-provider"
 
 export async function generateDailyBrief(
   userId: string,
@@ -73,14 +73,7 @@ export async function generateDailyBrief(
       }).join("\n")
     : "No new emails."
 
-  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-
-  const response = await anthropic.messages.create({
-    model: "claude-haiku-4-5-20251001",
-    max_tokens: 800,
-    messages: [{
-      role: "user",
-      content: `Write a morning brief for a family assistant app. Today is ${today}.
+  const prompt = `Write a morning brief for a family assistant app. Today is ${today}.
 
 Today's calendar:
 ${calendarSection}
@@ -94,10 +87,8 @@ Write it as PLAIN TEXT (no markdown, no asterisks, no # headers) using this stru
 - If there are emails worth flagging, a line "From your emails:" followed by one "• " bullet per key item. Each bullet must state the actual concrete detail from the email content — e.g. "Fire drill Sept 17, Back to School Assembly Sept 18 at 12:30pm (K-2), Curriculum Night Oct 8 5-6:30pm" — never a vague placeholder like "an email about school" or "some important emails to review". Combine closely related points from the same email into one bullet; use a separate bullet per distinct topic/email otherwise.
 - Skip a section entirely if there's nothing to report in it.
 - Keep each bullet to one line. Be concise overall.`
-    }]
-  })
 
-  const briefText = response.content[0].type === "text" ? response.content[0].text.trim() : ""
+  const briefText = (await generateText(prompt, 800)).trim()
   if (!briefText) return
 
   await supabase.from("notifications").insert({

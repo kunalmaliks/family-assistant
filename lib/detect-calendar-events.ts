@@ -1,4 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk"
+import { generateText } from "./ai-provider"
 
 export interface DetectedEvent {
   title: string
@@ -23,14 +23,7 @@ export async function detectCalendarEvents(
   body: string,
   emailDate: string
 ): Promise<DetectedEvent[]> {
-  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-
-  const response = await anthropic.messages.create({
-    model: "claude-haiku-4-5-20251001",
-    max_tokens: 1500,
-    messages: [{
-      role: "user",
-      content: `Extract appointments, events, or meetings from this email received on ${emailDate}.
+  const prompt = `Extract appointments, events, or meetings from this email received on ${emailDate}.
 
 Subject: ${subject}
 Body: ${body.slice(0, 6000)}
@@ -79,10 +72,8 @@ Other rules:
 - Return [] if nothing found
 
 JSON array only, no other text.`
-    }]
-  })
 
-  const text = response.content[0].type === "text" ? response.content[0].text : "[]"
+  const text = (await generateText(prompt, 1500)) || "[]"
   const stripped = text.replace(/```json|```/g, "").trim()
   const match = stripped.match(/\[[\s\S]*\]/)
   if (!match) {

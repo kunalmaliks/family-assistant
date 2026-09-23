@@ -1,9 +1,9 @@
 import { google } from "googleapis"
 import { createSupabaseAdminClient } from "./supabase"
 import OpenAI from "openai"
-import Anthropic from "@anthropic-ai/sdk"
 import type { Category } from "./supabase"
 import { processEmailForCalendar } from "./process-email-calendar"
+import { generateVisionText } from "./ai-provider"
 
 export interface SyncSummary {
   fetched: number
@@ -230,37 +230,23 @@ const IMAGE_MIME_TYPES = new Set([
 
 const IMAGE_EXTENSIONS = new Set(["jpg", "jpeg", "png", "gif", "webp", "heic", "heif"])
 
-async function extractTextWithClaude(
+async function extractDocumentText(
   buffer: Buffer,
   mediaType: string,
   filename: string
 ): Promise<string | null> {
   try {
-    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-    const base64 = buffer.toString("base64")
-
-    const isImage = IMAGE_MIME_TYPES.has(mediaType) || mediaType.startsWith("image/")
-    const contentBlock = isImage
-      ? ({ type: "image", source: { type: "base64", media_type: mediaType as "image/jpeg" | "image/png" | "image/gif" | "image/webp", data: base64 } } as const)
-      : ({ type: "document", source: { type: "base64", media_type: "application/pdf", data: base64 } } as const)
-
-    const res = await anthropic.messages.create({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 1500,
-      messages: [{
-        role: "user",
-        content: [
-          contentBlock,
-          { type: "text", text: "Extract all text from this document. Return only the extracted text with no commentary, labels, or explanation." },
-        ],
-      }],
-    })
-
-    const text = res.content[0].type === "text" ? res.content[0].text.trim() : ""
-    if (!text) return null
-    return text.slice(0, 5000)
+    const text = await generateVisionText(
+      buffer,
+      mediaType,
+      "Extract all text from this document. Return only the extracted text with no commentary, labels, or explanation.",
+      1500
+    )
+    const trimmed = text.trim()
+    if (!trimmed) return null
+    return trimmed.slice(0, 5000)
   } catch (e) {
-    console.error(`[gmail] Claude OCR failed (${filename}):`, e)
+    console.error(`[gmail] OCR failed (${filename}):`, e)
     return null
   }
 }
@@ -297,12 +283,12 @@ async function extractAttachmentText(gmail: any, messageId: string, attachmentId
       if (text) return text
       // Image-based PDF — fall back to Claude document OCR
       console.log(`[gmail] PDF "${filename}" has no text layer, falling back to Claude OCR`)
-      return extractTextWithClaude(buffer, "application/pdf", filename)
+      return extractDocumentText(buffer, "application/pdf", filename)
     }
 
     if (isImage) {
       const resolvedMime = IMAGE_MIME_TYPES.has(mimeType) ? mimeType : `image/${ext === "jpg" ? "jpeg" : ext}`
-      return extractTextWithClaude(buffer, resolvedMime, filename)
+      return extractDocumentText(buffer, resolvedMime, filename)
     }
 
     if (isText) {
