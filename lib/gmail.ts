@@ -13,6 +13,31 @@ export interface SyncSummary {
   inserted: number
 }
 
+// Embedding calls commonly land in a burst of new emails at the start of a
+// sync run and can hit OpenAI's per-minute rate limit; without a retry, every
+// email in that burst was permanently left with no embedding (invisible to
+// RAG search) since the failure was previously swallowed silently.
+async function createEmbeddingWithRetry(
+  openai: OpenAI,
+  input: string,
+  context: string
+): Promise<number[] | null> {
+  const attempts = 3
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const res = await openai.embeddings.create({ model: "text-embedding-3-small", input })
+      return res.data[0].embedding
+    } catch (e) {
+      if (i === attempts - 1) {
+        console.error(`[gmail] embedding failed after ${attempts} attempts (${context}):`, e)
+        return null
+      }
+      await new Promise((r) => setTimeout(r, 1000 * 2 ** i))
+    }
+  }
+  return null
+}
+
 export async function syncEmailsForUser(
   userEmail: string,
   accessToken: string,
@@ -136,14 +161,11 @@ export async function syncEmailsForUser(
         .filter(Boolean)
         .join("\n")
 
-      let embedding = null
-      try {
-        const embRes = await openai.embeddings.create({
-          model: "text-embedding-3-small",
-          input: `${subject}\n${body}${attachmentText ? "\n" + attachmentText : ""}`.slice(0, 8000),
-        })
-        embedding = embRes.data[0].embedding
-      } catch {}
+      const embedding = await createEmbeddingWithRetry(
+        openai,
+        `${subject}\n${body}${attachmentText ? "\n" + attachmentText : ""}`.slice(0, 8000),
+        `${messageId} "${subject}"`
+      )
 
       const { data: insertedEmail, error: insertError } = await supabase
         .from("emails")
