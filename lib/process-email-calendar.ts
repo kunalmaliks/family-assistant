@@ -58,7 +58,7 @@ export async function processEmailForCalendar(
       }
 
       // High confidence: check for duplicate first
-      const dupCheck = await checkCalendarDuplicate(event.title, event.date, accessToken, refreshToken)
+      const dupCheck = await checkCalendarDuplicate(event.title, event.date, accessToken, refreshToken, timezone)
 
       if (dupCheck.isDuplicate) {
         await supabase.from("notifications").insert({

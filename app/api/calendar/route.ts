@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
 
   // Duplicate check — skip for recurring events since they span multiple dates
   if (!recurrence) {
-    const dupCheck = await checkCalendarDuplicate(title, date, accessToken, refreshToken)
+    const dupCheck = await checkCalendarDuplicate(title, date, accessToken, refreshToken, tz)
     if (dupCheck.isDuplicate) {
       return NextResponse.json({
         duplicate: true,

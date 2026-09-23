@@ -11,7 +11,8 @@ export async function checkCalendarDuplicate(
   title: string,
   date: string,
   accessToken: string,
-  refreshToken: string | null
+  refreshToken: string | null,
+  timezone = "America/Los_Angeles"
 ): Promise<DuplicateCheckResult> {
   try {
     const gAuth = new google.auth.OAuth2(
@@ -22,18 +23,28 @@ export async function checkCalendarDuplicate(
 
     const calendar = google.calendar({ version: "v3", auth: gAuth })
 
-    const dayStart = new Date(`${date}T00:00:00`)
-    const dayEnd = new Date(`${date}T23:59:59`)
+    // Widen the UTC search window by a day on each side (safe for any timezone
+    // offset up to ±14h), then filter by the zone-correct date Google returns
+    // when timeZone is passed — mirrors the pattern in lib/calendar.ts.
+    const dayStart = new Date(`${date}T00:00:00Z`)
+    dayStart.setUTCDate(dayStart.getUTCDate() - 1)
+    const dayEnd = new Date(`${date}T23:59:59Z`)
+    dayEnd.setUTCDate(dayEnd.getUTCDate() + 1)
 
     const res = await calendar.events.list({
       calendarId: "primary",
       timeMin: dayStart.toISOString(),
       timeMax: dayEnd.toISOString(),
       singleEvents: true,
+      timeZone: timezone,
     })
 
     const existingEvents = (res.data.items || [])
-      .filter(e => e.status !== "cancelled" && e.summary)
+      .filter((e) => {
+        if (e.status === "cancelled" || !e.summary) return false
+        const startRaw = e.start?.dateTime || e.start?.date || ""
+        return startRaw.split("T")[0] === date
+      })
       .map(e => ({ id: e.id!, title: e.summary! }))
 
     if (existingEvents.length === 0) return { isDuplicate: false }
