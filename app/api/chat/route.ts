@@ -6,6 +6,7 @@ import { fetchCalendarEvents, formatEventsForContext } from "@/lib/calendar"
 import Anthropic from "@anthropic-ai/sdk"
 import OpenAI from "openai"
 import { decryptToken } from "@/lib/token-crypto"
+import { generateChatResponse } from "@/lib/ai-provider"
 
 const calendarTool: Anthropic.Tool = {
   name: "suggest_calendar_event",
@@ -107,7 +108,6 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
   const session = await auth()
   if (!session?.user?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -214,29 +214,24 @@ ${calendarContext}
 📧 RELEVANT EMAILS:
 ${relevantEmails.length > 0 ? relevantEmails.join("\n\n---\n\n") : "No emails synced yet."}`
 
-  const response = await anthropic.messages.create({
-    model: "claude-sonnet-4-6",
-    max_tokens: 2048,
-    system: systemPrompt,
-    tools: [calendarTool, editCalendarTool],
-    messages: [
-      ...historyMessages,
-      { role: "user", content: message },
-    ],
-  })
+  const { text: modelText, toolCalls } = await generateChatResponse(
+    systemPrompt,
+    historyMessages,
+    message,
+    [calendarTool, editCalendarTool],
+    2048
+  )
 
   // Extract text and any calendar suggestion from response
-  let assistantMessage = ""
+  let assistantMessage = modelText
   const calendarSuggestions: Record<string, string | undefined>[] = []
   let calendarEdit: Record<string, string | undefined> | null = null
 
-  for (const block of response.content) {
-    if (block.type === "text") {
-      assistantMessage += block.text
-    } else if (block.type === "tool_use" && block.name === "suggest_calendar_event") {
-      calendarSuggestions.push(block.input as Record<string, string>)
-    } else if (block.type === "tool_use" && block.name === "edit_calendar_event") {
-      calendarEdit = block.input as Record<string, string>
+  for (const call of toolCalls) {
+    if (call.name === "suggest_calendar_event") {
+      calendarSuggestions.push(call.input as Record<string, string>)
+    } else if (call.name === "edit_calendar_event") {
+      calendarEdit = call.input as Record<string, string>
     }
   }
 
