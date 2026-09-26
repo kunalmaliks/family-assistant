@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { signOut, useSession } from "next-auth/react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Plus, Trash2, LogOut, RefreshCw, X, RotateCcw } from "lucide-react"
+import { Plus, Trash2, LogOut, RefreshCw, X, RotateCcw, AlertTriangle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { CategoryRule } from "@/lib/supabase"
 
@@ -29,15 +29,25 @@ export default function SettingsPage() {
   const [savingSync, setSavingSync] = useState(false)
   const [retrying, setRetrying] = useState(false)
   const [retryResult, setRetryResult] = useState<string | null>(null)
+  const [failedCount, setFailedCount] = useState(0)
 
   useEffect(() => {
     fetchRules()
     fetchSettings()
+    fetchFailedCount()
     if (searchParams.get("syncing") === "true") {
       setSyncBanner("syncing")
       router.replace("/settings")
     }
   }, [])
+
+  async function fetchFailedCount() {
+    try {
+      const res = await fetch("/api/emails/retry-failed")
+      const data = await res.json()
+      setFailedCount(data.count || 0)
+    } catch {}
+  }
 
   async function fetchRules() {
     try {
@@ -92,6 +102,7 @@ export default function SettingsPage() {
           ? `Retried ${data.retried} email${data.retried === 1 ? "" : "s"} — daily brief refreshed.`
           : data.error || "Retry failed."
       )
+      if (res.ok) await fetchFailedCount()
     } catch {
       setRetryResult("Retry failed — network error.")
     } finally {
@@ -148,6 +159,31 @@ export default function SettingsPage() {
           <p className="text-xs text-zinc-600 mt-0.5">{session.user.email}</p>
         )}
       </div>
+
+      {failedCount > 0 && (
+        <div className="mx-4 mt-3 flex items-start gap-3 bg-yellow-500/10 border border-yellow-500/30 rounded-xl px-4 py-3">
+          <AlertTriangle size={16} className="text-yellow-400 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-sm text-yellow-300 font-medium">
+              {failedCount} calendar detection{failedCount === 1 ? "" : "s"} failed
+            </p>
+            <p className="text-xs text-yellow-500/80 mt-0.5">
+              Retry to add missed events and refresh today&apos;s brief.
+            </p>
+            <button
+              onClick={retryFailed}
+              disabled={retrying}
+              className="mt-2 flex items-center gap-1.5 text-xs font-semibold bg-yellow-500 text-black rounded-lg px-3 py-1.5 hover:bg-yellow-400 transition-colors disabled:opacity-50"
+            >
+              <RotateCcw size={12} className={cn(retrying && "animate-spin")} />
+              {retrying ? "Retrying..." : "Retry Now"}
+            </button>
+            {retryResult && (
+              <p className="text-[11px] text-yellow-500/70 mt-2">{retryResult}</p>
+            )}
+          </div>
+        </div>
+      )}
 
       {syncBanner && (
         <div className="mx-4 mt-3 flex items-center gap-3 bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-3">

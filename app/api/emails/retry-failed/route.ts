@@ -6,6 +6,25 @@ import { processEmailForCalendar } from "@/lib/process-email-calendar"
 import { generateDailyBrief } from "@/lib/generate-daily-brief"
 import { decryptToken } from "@/lib/token-crypto"
 
+export async function GET() {
+  const session = await auth()
+  if (!session?.user?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
+  const supabase = createSupabaseAdminClient()
+  const user = await getOrCreateUser(session)
+  if (!user) return NextResponse.json({ count: 0 })
+
+  const { count } = await supabase
+    .from("notifications")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id)
+    .eq("type", "review")
+    .eq("dismissed", false)
+    .not("email_id", "is", null)
+
+  return NextResponse.json({ count: count ?? 0 })
+}
+
 export async function POST() {
   const session = await auth()
   if (!session?.user?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
