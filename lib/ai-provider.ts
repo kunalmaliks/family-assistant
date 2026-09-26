@@ -14,23 +14,50 @@ const CLAUDE_CHAT_MODEL = "claude-sonnet-4-6"
 // not a future-risk guess. Google's own error recommends this replacement.
 const GEMINI_MODEL = "gemini-3.5-flash-lite"
 
+// Both providers occasionally return transient errors (Gemini 503
+// "UNAVAILABLE"/high demand, Claude rate limits) — retry transparently so a
+// one-off blip doesn't surface as a permanent failure to callers. Rethrows
+// (not swallows) on final exhaustion so each caller's existing error
+// handling — throw for detectCalendarEvents, catch-and-default for
+// duplicate-check/OCR — is unaffected.
+async function withRetry<T>(fn: () => Promise<T>, context: string, attempts = 3): Promise<T> {
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn()
+    } catch (e) {
+      if (i === attempts - 1) {
+        console.error(`[ai-provider] failed after ${attempts} attempts (${context}):`, e)
+        throw e
+      }
+      await new Promise((r) => setTimeout(r, 1000 * 2 ** i))
+    }
+  }
+  throw new Error("unreachable")
+}
+
 export async function generateText(prompt: string, maxTokens: number): Promise<string> {
   if (PROVIDER === "gemini") {
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
-    const res = await ai.models.generateContent({
-      model: GEMINI_MODEL,
-      contents: prompt,
-      config: { maxOutputTokens: maxTokens },
-    })
+    const res = await withRetry(
+      () => ai.models.generateContent({
+        model: GEMINI_MODEL,
+        contents: prompt,
+        config: { maxOutputTokens: maxTokens },
+      }),
+      "generateText/gemini"
+    )
     return res.text ?? ""
   }
 
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-  const res = await anthropic.messages.create({
-    model: CLAUDE_MODEL,
-    max_tokens: maxTokens,
-    messages: [{ role: "user", content: prompt }],
-  })
+  const res = await withRetry(
+    () => anthropic.messages.create({
+      model: CLAUDE_MODEL,
+      max_tokens: maxTokens,
+      messages: [{ role: "user", content: prompt }],
+    }),
+    "generateText/claude"
+  )
   return res.content[0].type === "text" ? res.content[0].text : ""
 }
 
@@ -44,14 +71,17 @@ export async function generateVisionText(
 
   if (PROVIDER === "gemini") {
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
-    const res = await ai.models.generateContent({
-      model: GEMINI_MODEL,
-      contents: [{
-        role: "user",
-        parts: [{ inlineData: { mimeType, data: base64 } }, { text: prompt }],
-      }],
-      config: { maxOutputTokens: maxTokens },
-    })
+    const res = await withRetry(
+      () => ai.models.generateContent({
+        model: GEMINI_MODEL,
+        contents: [{
+          role: "user",
+          parts: [{ inlineData: { mimeType, data: base64 } }, { text: prompt }],
+        }],
+        config: { maxOutputTokens: maxTokens },
+      }),
+      "generateVisionText/gemini"
+    )
     return res.text ?? ""
   }
 
@@ -68,11 +98,14 @@ export async function generateVisionText(
         },
       } as const)
 
-  const res = await anthropic.messages.create({
-    model: CLAUDE_MODEL,
-    max_tokens: maxTokens,
-    messages: [{ role: "user", content: [contentBlock, { type: "text", text: prompt }] }],
-  })
+  const res = await withRetry(
+    () => anthropic.messages.create({
+      model: CLAUDE_MODEL,
+      max_tokens: maxTokens,
+      messages: [{ role: "user", content: [contentBlock, { type: "text", text: prompt }] }],
+    }),
+    "generateVisionText/claude"
+  )
   return res.content[0].type === "text" ? res.content[0].text : ""
 }
 
@@ -108,15 +141,18 @@ export async function generateChatResponse(
       { role: "user", parts: [{ text: userMessage }] },
     ]
 
-    const res = await ai.models.generateContent({
-      model: GEMINI_MODEL,
-      contents,
-      config: {
-        systemInstruction: systemPrompt,
-        maxOutputTokens: maxTokens,
-        tools: [{ functionDeclarations }],
-      },
-    })
+    const res = await withRetry(
+      () => ai.models.generateContent({
+        model: GEMINI_MODEL,
+        contents,
+        config: {
+          systemInstruction: systemPrompt,
+          maxOutputTokens: maxTokens,
+          tools: [{ functionDeclarations }],
+        },
+      }),
+      "generateChatResponse/gemini"
+    )
 
     const toolCalls: ChatToolCall[] = (res.functionCalls ?? []).map((fc) => ({
       name: fc.name ?? "",
@@ -126,16 +162,19 @@ export async function generateChatResponse(
   }
 
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-  const response = await anthropic.messages.create({
-    model: CLAUDE_CHAT_MODEL,
-    max_tokens: maxTokens,
-    system: systemPrompt,
-    tools,
-    messages: [
-      ...history.map((h) => ({ role: h.role, content: h.content })),
-      { role: "user" as const, content: userMessage },
-    ],
-  })
+  const response = await withRetry(
+    () => anthropic.messages.create({
+      model: CLAUDE_CHAT_MODEL,
+      max_tokens: maxTokens,
+      system: systemPrompt,
+      tools,
+      messages: [
+        ...history.map((h) => ({ role: h.role, content: h.content })),
+        { role: "user" as const, content: userMessage },
+      ],
+    }),
+    "generateChatResponse/claude"
+  )
 
   let text = ""
   const toolCalls: ChatToolCall[] = []
