@@ -6,23 +6,26 @@ export async function generateDailyBrief(
   userId: string,
   accessToken: string,
   refreshToken: string | null,
-  timezone?: string
+  timezone?: string,
+  force = false
 ): Promise<void> {
   const supabase = createSupabaseAdminClient()
 
-  // Skip if a brief was already posted today
-  const todayStart = new Date()
-  todayStart.setHours(0, 0, 0, 0)
+  if (!force) {
+    // Skip if a brief was already posted today
+    const todayStart = new Date()
+    todayStart.setHours(0, 0, 0, 0)
 
-  const { data: existing } = await supabase
-    .from("notifications")
-    .select("id")
-    .eq("user_id", userId)
-    .eq("type", "daily_brief")
-    .gte("created_at", todayStart.toISOString())
-    .limit(1)
+    const { data: existing } = await supabase
+      .from("notifications")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("type", "daily_brief")
+      .gte("created_at", todayStart.toISOString())
+      .limit(1)
 
-  if (existing && existing.length > 0) return
+    if (existing && existing.length > 0) return
+  }
 
   const today = new Date().toISOString().split("T")[0]
 

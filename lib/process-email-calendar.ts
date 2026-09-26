@@ -8,6 +8,7 @@ export async function processEmailForCalendar(
   subject: string,
   body: string,
   emailDate: string,
+  emailId: string,
   userId: string,
   accessToken: string,
   refreshToken: string | null,
@@ -29,6 +30,7 @@ export async function processEmailForCalendar(
       type: "review",
       title: `Couldn't scan "${subject}" for events`,
       body: "Automatic calendar detection failed for this email — please check it manually for any dates to add.",
+      email_id: emailId,
     })
     return
   }

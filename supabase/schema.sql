@@ -78,6 +78,26 @@ create table if not exists settings (
   created_at timestamptz default now()
 );
 
+-- Notifications
+-- Note: this table previously existed only via manual ALTER TABLE statements
+-- against the live DB and was missing from this file entirely (schema drift).
+create table if not exists notifications (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references users(id) on delete cascade,
+  type text not null check (type in ('auto_event', 'duplicate', 'daily_brief', 'review')),
+  title text not null,
+  body text,
+  calendar_event_id text,
+  event_date date,
+  dismissed boolean default false,
+  created_at timestamptz default now(),
+  -- Only populated when a "review" row means "detectCalendarEvents threw
+  -- entirely" — doubles as the retry-eligibility flag (see app/api/emails/retry-failed).
+  email_id uuid references emails(id) on delete cascade
+);
+
+create index if not exists notifications_email_id_idx on notifications(email_id);
+
 -- pgvector similarity search function
 create or replace function match_emails(
   query_embedding vector(1536),

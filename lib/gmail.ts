@@ -200,10 +200,10 @@ export async function syncEmailsForUser(
       // so two emails about the same event in one sync batch can't both pass
       // the duplicate check before either one's calendar.events.insert lands —
       // errors are still non-fatal to the overall sync.
-      if (userId) {
+      if (userId && insertedEmail) {
         const combinedText = `${body}${attachmentText ? "\n" + attachmentText : ""}`
         const receivedIso = new Date(dateStr).toISOString()
-        await processEmailForCalendar(subject, combinedText, receivedIso, userId, accessToken, refreshToken, timezone)
+        await processEmailForCalendar(subject, combinedText, receivedIso, insertedEmail.id, userId, accessToken, refreshToken, timezone)
           .catch((e) => console.error("[sync] calendar detection error:", e))
       }
     } catch {

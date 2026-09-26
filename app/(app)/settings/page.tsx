@@ -27,6 +27,8 @@ export default function SettingsPage() {
   const [lookbackPeriod, setLookbackPeriod] = useState("1month")
   const [savingMonths, setSavingMonths] = useState(false)
   const [savingSync, setSavingSync] = useState(false)
+  const [retrying, setRetrying] = useState(false)
+  const [retryResult, setRetryResult] = useState<string | null>(null)
 
   useEffect(() => {
     fetchRules()
@@ -77,6 +79,24 @@ export default function SettingsPage() {
     setSyncBanner("syncing")
     await fetch("/api/emails/sync", { method: "POST" })
     setSyncingRuleId(null)
+  }
+
+  async function retryFailed() {
+    setRetrying(true)
+    setRetryResult(null)
+    try {
+      const res = await fetch("/api/emails/retry-failed", { method: "POST" })
+      const data = await res.json()
+      setRetryResult(
+        res.ok
+          ? `Retried ${data.retried} email${data.retried === 1 ? "" : "s"} — daily brief refreshed.`
+          : data.error || "Retry failed."
+      )
+    } catch {
+      setRetryResult("Retry failed — network error.")
+    } finally {
+      setRetrying(false)
+    }
   }
 
   async function saveSettings(patch: { sync_frequency?: string; lookback_period?: string; calendar_months_ahead?: number }) {
@@ -231,6 +251,23 @@ export default function SettingsPage() {
             <div>
               <p className="text-sm text-zinc-300 mb-1">Sync frequency</p>
               <p className="text-xs text-zinc-500">Automatic sync runs daily at 7am. Use the sync buttons above to sync manually anytime.</p>
+            </div>
+            <div>
+              <p className="text-sm text-zinc-300 mb-1">Retry failed detections</p>
+              <p className="text-xs text-zinc-500 mb-3">
+                Re-scans emails where automatic calendar detection failed (e.g. a temporary AI outage), and refreshes today&apos;s daily brief.
+              </p>
+              <button
+                onClick={retryFailed}
+                disabled={retrying}
+                className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-amber-500 transition-colors disabled:opacity-50"
+              >
+                <RotateCcw size={12} className={cn(retrying && "animate-spin")} />
+                Retry Failed
+              </button>
+              {retryResult && (
+                <p className="text-[11px] text-zinc-500 mt-2">{retryResult}</p>
+              )}
             </div>
             <div>
               <p className="text-sm text-zinc-300 mb-1">Lookback period</p>
