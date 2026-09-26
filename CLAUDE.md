@@ -107,6 +107,7 @@ A mobile-friendly family assistant web app that connects to Gmail, uses AI to an
 - Sync frequency: 30min / 1 hour / 2 hours
 - Lookback period: 1 month / 3 months / 6 months
 - Amber syncing banner when sync is in progress (dismissable)
+- "Retry Failed" button — re-runs calendar detection for emails where it previously failed entirely (e.g. an AI provider outage), and force-regenerates today's daily brief bypassing its once-per-day guard
 - Settings saved to Supabase settings table
 
 ## Database Schema
@@ -117,6 +118,7 @@ A mobile-friendly family assistant web app that connects to Gmail, uses AI to an
 - chat_history — id, user_id, message, role (user/assistant), timestamp
 - category_rules — id, user_id, rule_type (sender/domain/keyword), rule_value, category, created_at
 - settings — id, user_id, sync_frequency, lookback_period, notification_preferences, last_synced_at, created_at
+- notifications — id, user_id, type (auto_event/duplicate/daily_brief/review), title, body, calendar_event_id, event_date, dismissed, created_at, email_id (only set when a "review" row means detection failed entirely — doubles as the retry-eligibility flag for the Settings "Retry Failed" button)
 
 Note: tasks table exists in schema but is not used. Google Calendar is the single source of truth for events.
 
